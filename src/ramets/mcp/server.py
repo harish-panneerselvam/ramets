@@ -104,6 +104,151 @@ def run_server():
         db.close()
         return result
 
+    @mcp.tool()
+    def get_neighbors(label: str, branch: str = "", direction: str = "both") -> str:
+        """Get adjacent nodes for a given node.
+
+        Args:
+            label: Node label to search for (fuzzy match).
+            branch: Branch name (default: current branch).
+            direction: "in", "out", or "both" (default: "both").
+        """
+        import networkx as nx
+
+        from ramets.core.branch import get_db_path
+        from ramets.core.db import GenetDB
+        from ramets.core.materialize import materialize, to_networkx
+
+        db = GenetDB(get_db_path())
+        graph = materialize(db, branch or None)
+        G = to_networkx(graph)
+        db.close()
+
+        # Find node by label
+        target = None
+        for nid, data in G.nodes(data=True):
+            if label.lower() in data.get("label", "").lower():
+                target = nid
+                break
+        if target is None:
+            return f"No node matching '{label}'"
+
+        target_label = G.nodes[target].get("label", target)
+        lines = [f"Neighbors of {target_label} (direction={direction}):"]
+
+        if direction in ("in", "both"):
+            preds = []
+            for s, _, d in G.in_edges(target, data=True):
+                preds.append(f"  {G.nodes[s].get('label', s)} --{d.get('relation', '?')}--> {target_label}")
+            if preds:
+                lines.append(f"\nIncoming ({len(preds)}):")
+                lines.extend(preds[:20])
+
+        if direction in ("out", "both"):
+            succs = []
+            for _, t, d in G.out_edges(target, data=True):
+                succs.append(f"  {target_label} --{d.get('relation', '?')}--> {G.nodes[t].get('label', t)}")
+            if succs:
+                lines.append(f"\nOutgoing ({len(succs)}):")
+                lines.extend(succs[:20])
+
+        return "\n".join(lines)
+
+    @mcp.tool()
+    def shortest_path(source: str, target: str, branch: str = "") -> str:
+        """Find the shortest path between two nodes in the graph.
+
+        Args:
+            source: Source node label (fuzzy match).
+            target: Target node label (fuzzy match).
+            branch: Branch name (default: current branch).
+        """
+        import networkx as nx
+
+        from ramets.core.branch import get_db_path
+        from ramets.core.db import GenetDB
+        from ramets.core.materialize import materialize, to_networkx
+
+        db = GenetDB(get_db_path())
+        graph = materialize(db, branch or None)
+        G = to_networkx(graph)
+        db.close()
+
+        # Find nodes by label
+        src_nid = tgt_nid = None
+        for nid, data in G.nodes(data=True):
+            lbl = data.get("label", "").lower()
+            if source.lower() in lbl and src_nid is None:
+                src_nid = nid
+            if target.lower() in lbl and tgt_nid is None:
+                tgt_nid = nid
+
+        if src_nid is None:
+            return f"No node matching '{source}'"
+        if tgt_nid is None:
+            return f"No node matching '{target}'"
+
+        try:
+            path = nx.shortest_path(G, src_nid, tgt_nid)
+        except nx.NetworkXNoPath:
+            src_label = G.nodes[src_nid].get("label", src_nid)
+            tgt_label = G.nodes[tgt_nid].get("label", tgt_nid)
+            return f"No path from {src_label} to {tgt_label}"
+        except nx.NodeNotFound as e:
+            return str(e)
+
+        # Format as chain: A --rel--> B --rel--> C
+        parts = []
+        for i, nid in enumerate(path):
+            label = G.nodes[nid].get("label", nid)
+            parts.append(label)
+            if i < len(path) - 1:
+                edge_data = G.get_edge_data(nid, path[i + 1]) or {}
+                rel = edge_data.get("relation", "->")
+                parts.append(f" --{rel}--> ")
+
+        return f"Path ({len(path)} nodes): {''.join(parts)}"
+
+    @mcp.tool()
+    def get_community(community_id: int, branch: str = "") -> str:
+        """List all nodes in a specific community.
+
+        Args:
+            community_id: Community number (from graph clustering).
+            branch: Branch name (default: current branch).
+        """
+        from ramets.core.branch import get_db_path
+        from ramets.core.db import GenetDB
+        from ramets.core.materialize import materialize, to_networkx
+
+        db = GenetDB(get_db_path())
+        graph = materialize(db, branch or None)
+        G = to_networkx(graph)
+        db.close()
+
+        members = [
+            (nid, data)
+            for nid, data in G.nodes(data=True)
+            if data.get("community") == community_id
+        ]
+
+        if not members:
+            return f"No community with id {community_id}"
+
+        # Count internal edges
+        member_ids = {nid for nid, _ in members}
+        internal_edges = sum(
+            1 for u, v in G.edges() if u in member_ids and v in member_ids
+        )
+
+        lines = [f"Community {community_id}: {len(members)} nodes, {internal_edges} internal edges"]
+        for nid, data in sorted(members, key=lambda x: x[1].get("label", "")):
+            label = data.get("label", nid)
+            source = data.get("source_file", "")
+            lines.append(f"  {label}" + (f" ({source})" if source else ""))
+
+        return "\n".join(lines)
+
     # ── Decision tools (5) ─────────────────────────────────────────
 
     @mcp.tool()
