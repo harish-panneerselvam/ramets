@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.3.0 (2026-04-11)
+
+### Features
+
+- Add Claude Code skill, update README, fix release build
+  ([#6](https://github.com/panne027/ramets/pull/6),
+  [`eee51df`](https://github.com/panne027/ramets/commit/eee51df5ef302a183c5b916ace0ca418745fecb4))
+
+- Add SKILL.md for Claude Code `/ramets` skill (both in repo and ~/.claude/skills/ramets/) -
+  Register ramets skill in global CLAUDE.md - Update README with badges, real storage numbers, more
+  examples - Fix release workflow: remove build_command from pyproject.toml so semantic-release
+  doesn't create dist/ with restricted permissions
+
+Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>
+
+
 ## v0.2.1 (2026-04-11)
 
 ### Bug Fixes
