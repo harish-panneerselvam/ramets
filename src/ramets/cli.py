@@ -600,5 +600,57 @@ def serve():
         sys.exit(1)
 
 
+@main.command()
+def rebase():
+    """Recompute genet and all branch deltas after a git rebase.
+
+    After rebasing, the merge-base changes and existing deltas may be
+    invalid. This command rebuilds the genet from HEAD and recomputes
+    deltas for every registered branch.
+    """
+    db = _get_db()
+    repo_root = get_main_repo_root()
+
+    # Step 1: Rebuild genet
+    click.echo("Rebuilding genet from HEAD...")
+    from ramets.core.base import build_genet
+
+    graph_data = build_genet(db, repo_root)
+    node_count = len(graph_data.get("nodes", []))
+    edge_count = len(graph_data.get("links", []))
+    click.echo(f"Genet rebuilt: {node_count} nodes, {edge_count} edges")
+
+    # Step 2: Recompute deltas for all registered branches
+    from ramets.core.branch import current_commit
+    from ramets.core.delta import compute_deltas
+    from ramets.extract.ast_bridge import extract_graph
+
+    branches = db.list_branches()
+    if not branches:
+        click.echo("No branches registered.")
+        db.close()
+        return
+
+    branch_graph = extract_graph(repo_root)
+    commit = current_commit(cwd=repo_root)
+
+    for b in branches:
+        name = b["name"]
+        # Clear old deltas and cached ramets
+        db.conn.execute("DELETE FROM ramet_deltas WHERE branch = ?", (name,))
+        db.conn.execute("DELETE FROM ramets WHERE branch = ?", (name,))
+        db.conn.commit()
+
+        deltas = compute_deltas(graph_data, branch_graph)
+        if deltas:
+            db.append_deltas(name, commit, deltas)
+            click.echo(f"  {name}: {len(deltas)} deltas")
+        else:
+            click.echo(f"  {name}: no changes")
+
+    click.echo(f"Recomputed deltas for {len(branches)} branches")
+    db.close()
+
+
 if __name__ == "__main__":
     main()
