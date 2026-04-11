@@ -70,15 +70,15 @@ def current_commit(cwd: Path | None = None) -> str:
     return git_run("rev-parse", "--short", "HEAD", cwd=cwd)
 
 
-def merge_base(branch_a: str = "HEAD", branch_b: str = "main",
-               cwd: Path | None = None) -> str | None:
+def merge_base(
+    branch_a: str = "HEAD", branch_b: str = "main", cwd: Path | None = None
+) -> str | None:
     """Find the merge-base commit between two branches."""
     result = git_run("merge-base", branch_a, branch_b, cwd=cwd)
     return result or None
 
 
-def changed_files(since: str = "HEAD~1", until: str = "HEAD",
-                  cwd: Path | None = None) -> list[str]:
+def changed_files(since: str = "HEAD~1", until: str = "HEAD", cwd: Path | None = None) -> list[str]:
     """Get files changed between two commits."""
     output = git_run("diff", "--name-only", since, until, cwd=cwd)
     if not output:

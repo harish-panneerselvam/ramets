@@ -107,7 +107,7 @@ def init(no_hooks: bool, no_claude_hooks: bool):
 
     db.close()
 
-    click.echo(f"\nReady! Try: ramets query \"how does the main module work?\"")
+    click.echo('\nReady! Try: ramets query "how does the main module work?"')
     click.echo(f"Storage: {db_path.stat().st_size / 1024:.0f} KB")
 
 
@@ -168,9 +168,11 @@ def status():
 
     genet_meta = db.genet_meta()
     if genet_meta:
-        click.echo(f"Genet: {genet_meta['node_count']} nodes, "
-                    f"{genet_meta['edge_count']} edges "
-                    f"(commit {genet_meta['commit_sha']}, built {genet_meta['built_at']})")
+        click.echo(
+            f"Genet: {genet_meta['node_count']} nodes, "
+            f"{genet_meta['edge_count']} edges "
+            f"(commit {genet_meta['commit_sha']}, built {genet_meta['built_at']})"
+        )
     else:
         click.echo("Genet: not built")
 
@@ -252,6 +254,7 @@ def obsidian(open_obsidian: bool, vault_dir: str | None, all_branches: bool):
 
     if open_obsidian:
         import subprocess
+
         subprocess.run(
             ["open", f"obsidian://open?path={output}"],
             check=False,
@@ -298,6 +301,7 @@ def serve():
     """Start MCP server (stdio for Claude Code)."""
     try:
         from ramets.mcp.server import run_server
+
         run_server()
     except ImportError:
         click.echo(

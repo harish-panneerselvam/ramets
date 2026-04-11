@@ -13,25 +13,23 @@ def run_server():
     try:
         from mcp.server.fastmcp import FastMCP
     except ImportError:
-        raise ImportError(
-            "MCP dependencies not installed. Run: pip install ramets[mcp]"
-        )
+        raise ImportError("MCP dependencies not installed. Run: pip install ramets[mcp]")
 
     mcp = FastMCP("ramets")
 
     # ── Code graph tools (7) ───────────────────────────────────────
 
     @mcp.tool()
-    def query_graph(question: str, branch: str = "", depth: int = 3,
-                    token_budget: int = 2000) -> str:
+    def query_graph(
+        question: str, branch: str = "", depth: int = 3, token_budget: int = 2000
+    ) -> str:
         """Search the knowledge graph for the current (or specified) branch."""
         from ramets.core.branch import get_db_path
         from ramets.core.db import GenetDB
         from ramets.core.materialize import query_graph as _query
 
         db = GenetDB(get_db_path())
-        result = _query(db, question, branch=branch or None, depth=depth,
-                        token_budget=token_budget)
+        result = _query(db, question, branch=branch or None, depth=depth, token_budget=token_budget)
         db.close()
         return result
 
@@ -50,10 +48,14 @@ def run_server():
         # Find node by label
         for nid, data in G.nodes(data=True):
             if label.lower() in data.get("label", "").lower():
-                edges_out = [(d.get("relation", "->"), G.nodes.get(t, {}).get("label", t))
-                             for _, t, d in G.out_edges(nid, data=True)]
-                edges_in = [(d.get("relation", "<-"), G.nodes.get(s, {}).get("label", s))
-                            for s, _, d in G.in_edges(nid, data=True)]
+                edges_out = [
+                    (d.get("relation", "->"), G.nodes.get(t, {}).get("label", t))
+                    for _, t, d in G.out_edges(nid, data=True)
+                ]
+                edges_in = [
+                    (d.get("relation", "<-"), G.nodes.get(s, {}).get("label", s))
+                    for s, _, d in G.in_edges(nid, data=True)
+                ]
                 return (
                     f"Node: {data.get('label', nid)}\n"
                     f"Source: {data.get('source_file', '?')}\n"
@@ -105,10 +107,15 @@ def run_server():
     # ── Decision tools (5) ─────────────────────────────────────────
 
     @mcp.tool()
-    def record_decision(question: str, options: list[dict], chosen: int,
-                        category: str = "implementation", rationale: str = "",
-                        context_files: list[str] = [],
-                        confidence: float = 0.8) -> str:
+    def record_decision(
+        question: str,
+        options: list[dict],
+        chosen: int,
+        category: str = "implementation",
+        rationale: str = "",
+        context_files: list[str] = [],
+        confidence: float = 0.8,
+    ) -> str:
         """Record a design/implementation decision."""
         from ramets.core.branch import current_branch, get_db_path
         from ramets.core.db import GenetDB
@@ -133,8 +140,7 @@ def run_server():
         return f"Decision recorded: {did}"
 
     @mcp.tool()
-    def list_decisions(branch: str = "", category: str = "",
-                       status: str = "active") -> str:
+    def list_decisions(branch: str = "", category: str = "", status: str = "active") -> str:
         """List decisions filtered by branch/category/status."""
         from ramets.core.branch import get_db_path
         from ramets.core.db import GenetDB
@@ -142,8 +148,7 @@ def run_server():
 
         db = GenetDB(get_db_path())
         tracker = DecisionTracker(db)
-        decisions = tracker.query(branch=branch or None, category=category or None,
-                                  status=status)
+        decisions = tracker.query(branch=branch or None, category=category or None, status=status)
         db.close()
         lines = [f"Decisions: {len(decisions)}"]
         for d in decisions[:20]:
@@ -195,8 +200,13 @@ def run_server():
         )
 
     @mcp.tool()
-    def supersede_decision(old_id: str, new_question: str, new_options: list[dict],
-                           new_chosen: int, rationale: str = "") -> str:
+    def supersede_decision(
+        old_id: str,
+        new_question: str,
+        new_options: list[dict],
+        new_chosen: int,
+        rationale: str = "",
+    ) -> str:
         """Create a new decision that supersedes an existing one."""
         from ramets.core.branch import current_branch, get_db_path
         from ramets.core.db import GenetDB
@@ -221,8 +231,7 @@ def run_server():
     # ── Obsidian tools (2) ─────────────────────────────────────────
 
     @mcp.tool()
-    def generate_obsidian_vault(branches: list[str] = [],
-                                include_decisions: bool = True) -> str:
+    def generate_obsidian_vault(branches: list[str] = [], include_decisions: bool = True) -> str:
         """Generate/update the Obsidian vault."""
         from ramets.core.branch import get_db_path, get_ramets_dir
         from ramets.core.db import GenetDB
@@ -230,8 +239,9 @@ def run_server():
 
         db = GenetDB(get_db_path())
         vault_dir = get_ramets_dir() / "obsidian"
-        generate_vault(db, vault_dir, branches=branches or None,
-                       include_decisions=include_decisions)
+        generate_vault(
+            db, vault_dir, branches=branches or None, include_decisions=include_decisions
+        )
         db.close()
         return f"Vault generated at {vault_dir}"
 

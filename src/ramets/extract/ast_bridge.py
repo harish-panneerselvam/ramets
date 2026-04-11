@@ -25,6 +25,7 @@ def extract_graph(repo_path: Path) -> dict:
     """
     try:
         from graphify.watch import _rebuild_code
+
         _rebuild_code(repo_path)
 
         # graphify writes to .claude/graphify-out/graph.json or graphify-out/graph.json
@@ -35,7 +36,7 @@ def extract_graph(repo_path: Path) -> dict:
     except ImportError:
         pass  # graphify not installed, try fallback
 
-    except Exception as e:
+    except Exception:
         # graphify failed, try fallback
         pass
 

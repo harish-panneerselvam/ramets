@@ -7,7 +7,6 @@ a NetworkX DiGraph for querying. Caches the result as a ramet snapshot.
 from __future__ import annotations
 
 from collections import defaultdict
-from pathlib import Path
 
 import networkx as nx
 
@@ -77,8 +76,9 @@ def to_networkx(graph_data: dict) -> nx.DiGraph:
     return G
 
 
-def query_graph(db: GenetDB, question: str, branch: str | None = None,
-                depth: int = 3, token_budget: int = 2000) -> str:
+def query_graph(
+    db: GenetDB, question: str, branch: str | None = None, depth: int = 3, token_budget: int = 2000
+) -> str:
     """Query the knowledge graph using keyword matching + BFS traversal.
 
     Args:
@@ -156,10 +156,7 @@ def diff_branches(db: GenetDB, branch_a: str, branch_b: str) -> str:
 
     added = set(nodes_b.keys()) - set(nodes_a.keys())
     removed = set(nodes_a.keys()) - set(nodes_b.keys())
-    modified = {
-        nid for nid in nodes_a.keys() & nodes_b.keys()
-        if nodes_a[nid] != nodes_b[nid]
-    }
+    modified = {nid for nid in nodes_a.keys() & nodes_b.keys() if nodes_a[nid] != nodes_b[nid]}
 
     lines = [f"## Graph diff: {branch_a} vs {branch_b}\n"]
     lines.append(f"Added: {len(added)} | Removed: {len(removed)} | Modified: {len(modified)}\n")
@@ -201,9 +198,7 @@ def summary(db: GenetDB, branch: str | None = None) -> str:
 
     # God nodes (top 10 by degree)
     degree = sorted(G.degree(), key=lambda x: -x[1])[:10]
-    gods = "\n".join(
-        f"  {G.nodes[n].get('label', n)} ({d} edges)" for n, d in degree
-    )
+    gods = "\n".join(f"  {G.nodes[n].get('label', n)} ({d} edges)" for n, d in degree)
 
     # Communities
     communities: defaultdict[int, list[str]] = defaultdict(list)
@@ -240,14 +235,50 @@ Genet: {genet_commit} | Deltas: {delta_count}
 
 # ── Internal helpers ───────────────────────────────────────────────
 
+
 def _extract_keywords(question: str) -> list[str]:
     """Extract meaningful keywords from a question."""
     stop_words = {
-        "how", "does", "what", "where", "is", "the", "a", "an", "in", "to",
-        "of", "for", "with", "this", "that", "it", "from", "by", "on", "at",
-        "and", "or", "not", "are", "was", "were", "be", "been", "do", "did",
-        "can", "could", "would", "should", "will", "work", "works", "use",
-        "used", "using",
+        "how",
+        "does",
+        "what",
+        "where",
+        "is",
+        "the",
+        "a",
+        "an",
+        "in",
+        "to",
+        "of",
+        "for",
+        "with",
+        "this",
+        "that",
+        "it",
+        "from",
+        "by",
+        "on",
+        "at",
+        "and",
+        "or",
+        "not",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "do",
+        "did",
+        "can",
+        "could",
+        "would",
+        "should",
+        "will",
+        "work",
+        "works",
+        "use",
+        "used",
+        "using",
     }
     words = question.lower().replace("?", "").replace("'", "").split()
     return [w for w in words if w not in stop_words and len(w) > 2]

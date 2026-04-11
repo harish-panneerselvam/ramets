@@ -6,7 +6,6 @@ Records structured decisions in SQLite and provides query interfaces.
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 from ramets.core.db import GenetDB
 from ramets.decision.schema import Decision, DecisionRelation, Option
@@ -111,8 +110,7 @@ class DecisionTracker:
         """Add a relationship between decisions (or decision → code node)."""
         with self.db.transaction() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO decision_edges (source, target, relation) "
-                "VALUES (?, ?, ?)",
+                "INSERT OR REPLACE INTO decision_edges (source, target, relation) VALUES (?, ?, ?)",
                 (source, target, relation.value),
             )
 

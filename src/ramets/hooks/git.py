@@ -6,7 +6,6 @@ that keep the genet and ramets up to date. Zero LLM tokens — all local.
 
 from __future__ import annotations
 
-import os
 import stat
 from pathlib import Path
 from textwrap import dedent
@@ -107,6 +106,7 @@ def _install_hook(hook_path: Path, content: str) -> None:
 def _find_ramets_python() -> str:
     """Find the Python interpreter that has ramets installed."""
     import sys
+
     return sys.executable
 
 

@@ -27,17 +27,33 @@ RELATION_EMOJI = {
 }
 
 COMMUNITY_COLORS = [
-    "#e6194b", "#3cb44b", "#ffe119", "#4363d8", "#f58231",
-    "#911eb4", "#42d4f4", "#f032e6", "#bfef45", "#fabed4",
-    "#469990", "#dcbeff", "#9A6324", "#fffac8", "#800000",
-    "#aaffc3", "#808000", "#ffd8b1", "#000075", "#a9a9a9",
+    "#e6194b",
+    "#3cb44b",
+    "#ffe119",
+    "#4363d8",
+    "#f58231",
+    "#911eb4",
+    "#42d4f4",
+    "#f032e6",
+    "#bfef45",
+    "#fabed4",
+    "#469990",
+    "#dcbeff",
+    "#9A6324",
+    "#fffac8",
+    "#800000",
+    "#aaffc3",
+    "#808000",
+    "#ffd8b1",
+    "#000075",
+    "#a9a9a9",
 ]
 
 
 def sanitize_filename(label: str) -> str:
     """Make a label safe for use as a filename."""
-    name = re.sub(r'[<>:"/\\|?*]', '_', label)
-    name = name.strip('. ')
+    name = re.sub(r'[<>:"/\\|?*]', "_", label)
+    name = name.strip(". ")
     if len(name) > 80:
         name = name[:77] + "..."
     return name or "unnamed"
@@ -110,8 +126,7 @@ def generate_vault(
         lines.append(f"community: {community}")
         if source_file:
             lines.append(f"source: {source_file}")
-        tags = [f"community/C{community:02d}", f"type/{file_type or 'unknown'}",
-                f"layer/base"]
+        tags = [f"community/C{community:02d}", f"type/{file_type or 'unknown'}", "layer/base"]
         lines.append(f"tags: [{', '.join(tags)}]")
         lines.append("---")
         lines.append("")
@@ -119,8 +134,7 @@ def generate_vault(
         lines.append("")
 
         if source_file:
-            lines.append(f"**Source:** `{source_file}`"
-                         f"{f' ({source_loc})' if source_loc else ''}")
+            lines.append(f"**Source:** `{source_file}`{f' ({source_loc})' if source_loc else ''}")
             lines.append("")
 
         # Outgoing links
@@ -171,7 +185,6 @@ def generate_vault(
     _write_graph_settings(vault_dir, communities)
 
     node_count = len(nodes)
-    edge_count = len(links)
     print(f"Wrote {node_count} notes to {vault_dir}")
 
 
@@ -213,22 +226,22 @@ def _write_index(
 
     for cid in sorted(communities.keys()):
         members = communities[cid]
-        top_members = sorted(
-            members, key=lambda n: degree_map.get(n["id"], 0), reverse=True
-        )[:3]
+        top_members = sorted(members, key=lambda n: degree_map.get(n["id"], 0), reverse=True)[:3]
         member_links = ", ".join(
             f"[[{id_to_filename[m['id']]}|{m['label'][:30]}]]" for m in top_members
         )
         lines.append(f"- **C{cid:02d}** ({len(members)} nodes): {member_links}")
 
-    lines.extend([
-        "",
-        "## Tips",
-        "",
-        "- **Graph View** (Cmd+G): See all connections visually",
-        "- **Local Graph**: Click any note, toggle local graph in right sidebar",
-        "- **Filter**: Use `tag:community/C00` or `tag:type/code` in search",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Tips",
+            "",
+            "- **Graph View** (Cmd+G): See all connections visually",
+            "- **Local Graph**: Click any note, toggle local graph in right sidebar",
+            "- **Filter**: Use `tag:community/C00` or `tag:type/code` in search",
+        ]
+    )
 
     (vault_dir / "Index.md").write_text("\n".join(lines))
 
@@ -241,10 +254,12 @@ def _write_graph_settings(vault_dir: Path, communities: dict) -> None:
     color_groups = []
     for i, cid in enumerate(sorted(communities.keys())[:20]):
         color = COMMUNITY_COLORS[i % len(COMMUNITY_COLORS)]
-        color_groups.append({
-            "query": f"tag:community/C{cid:02d}",
-            "color": {"a": 1, "rgb": int(color.lstrip("#"), 16)},
-        })
+        color_groups.append(
+            {
+                "query": f"tag:community/C{cid:02d}",
+                "color": {"a": 1, "rgb": int(color.lstrip("#"), 16)},
+            }
+        )
 
     graph_settings = {
         "collapse-filter": False,
@@ -262,7 +277,12 @@ def _write_graph_settings(vault_dir: Path, communities: dict) -> None:
     }
 
     (obsidian_dir / "graph.json").write_text(json.dumps(graph_settings, indent=2))
-    (obsidian_dir / "app.json").write_text(json.dumps({
-        "showLineNumber": True,
-        "showFrontmatter": False,
-    }, indent=2))
+    (obsidian_dir / "app.json").write_text(
+        json.dumps(
+            {
+                "showLineNumber": True,
+                "showFrontmatter": False,
+            },
+            indent=2,
+        )
+    )

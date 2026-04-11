@@ -6,9 +6,6 @@ that transform the genet into the branch-specific graph.
 
 from __future__ import annotations
 
-import json
-from typing import Any
-
 
 def compute_deltas(genet: dict, branch_graph: dict) -> list[dict]:
     """Compute deltas that transform genet into branch_graph.
@@ -33,31 +30,37 @@ def compute_deltas(genet: dict, branch_graph: dict) -> list[dict]:
     # Added nodes (in branch but not in genet)
     for nid, node in branch_nodes.items():
         if nid not in genet_nodes:
-            deltas.append({
-                "op": "add_node",
-                "entity_type": "node",
-                "entity_id": nid,
-                "payload": node,
-            })
+            deltas.append(
+                {
+                    "op": "add_node",
+                    "entity_type": "node",
+                    "entity_id": nid,
+                    "payload": node,
+                }
+            )
 
     # Removed nodes (in genet but not in branch)
     for nid in genet_nodes:
         if nid not in branch_nodes:
-            deltas.append({
-                "op": "rm_node",
-                "entity_type": "node",
-                "entity_id": nid,
-            })
+            deltas.append(
+                {
+                    "op": "rm_node",
+                    "entity_type": "node",
+                    "entity_id": nid,
+                }
+            )
 
     # Modified nodes (in both, but different)
     for nid in genet_nodes:
         if nid in branch_nodes and genet_nodes[nid] != branch_nodes[nid]:
-            deltas.append({
-                "op": "mod_node",
-                "entity_type": "node",
-                "entity_id": nid,
-                "payload": branch_nodes[nid],
-            })
+            deltas.append(
+                {
+                    "op": "mod_node",
+                    "entity_type": "node",
+                    "entity_id": nid,
+                    "payload": branch_nodes[nid],
+                }
+            )
 
     # ── Edge deltas ────────────────────────────────────────────────
     genet_edges = _index_edges(genet.get("links", []))
@@ -66,31 +69,37 @@ def compute_deltas(genet: dict, branch_graph: dict) -> list[dict]:
     # Added edges
     for eid, edge in branch_edges.items():
         if eid not in genet_edges:
-            deltas.append({
-                "op": "add_edge",
-                "entity_type": "edge",
-                "entity_id": eid,
-                "payload": edge,
-            })
+            deltas.append(
+                {
+                    "op": "add_edge",
+                    "entity_type": "edge",
+                    "entity_id": eid,
+                    "payload": edge,
+                }
+            )
 
     # Removed edges
     for eid in genet_edges:
         if eid not in branch_edges:
-            deltas.append({
-                "op": "rm_edge",
-                "entity_type": "edge",
-                "entity_id": eid,
-            })
+            deltas.append(
+                {
+                    "op": "rm_edge",
+                    "entity_type": "edge",
+                    "entity_id": eid,
+                }
+            )
 
     # Modified edges
     for eid in genet_edges:
         if eid in branch_edges and genet_edges[eid] != branch_edges[eid]:
-            deltas.append({
-                "op": "mod_edge",
-                "entity_type": "edge",
-                "entity_id": eid,
-                "payload": branch_edges[eid],
-            })
+            deltas.append(
+                {
+                    "op": "mod_edge",
+                    "entity_type": "edge",
+                    "entity_id": eid,
+                    "payload": branch_edges[eid],
+                }
+            )
 
     return deltas
 
