@@ -1,6 +1,23 @@
 # CHANGELOG
 
 
+## v0.4.0 (2026-04-11)
+
+### Features
+
+- Auto-install Claude Code skill on ramets init ([#7](https://github.com/panne027/ramets/pull/7),
+  [`454a7da`](https://github.com/panne027/ramets/commit/454a7daf7ae9a0a8c8e14a7a45ccbb2bf31505d9))
+
+`ramets init` now copies SKILL.md to ~/.claude/skills/ramets/ and registers the /ramets trigger in
+  ~/.claude/CLAUDE.md. Also adds `ramets install-skill` as a standalone command for manual
+  installation.
+
+This means `pip install ramets && ramets init` gives you the full Claude Code integration — hooks +
+  skill — in one step.
+
+Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>
+
+
 ## v0.3.0 (2026-04-11)
 
 ### Features
