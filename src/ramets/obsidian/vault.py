@@ -178,6 +178,20 @@ def generate_vault(
         filepath = base_dir / f"C{community:02d}" / f"{filename}.md"
         filepath.write_text("\n".join(lines))
 
+    # Write branch delta layers
+    branches_to_render = branches or [branch]
+    genet = db.load_genet()
+    branch_note_count = 0
+    if genet:
+        for br in branches_to_render:
+            count = _write_branch_layer(db, vault_dir, br, genet, id_to_filename, node_by_id)
+            branch_note_count += count
+
+    # Write decision notes
+    decision_count = 0
+    if include_decisions:
+        decision_count = _write_decision_notes(db, vault_dir, branches_to_render)
+
     # Write index / MOC
     _write_index(vault_dir, nodes, links, communities, id_to_filename, node_by_id, branch)
 
@@ -185,7 +199,248 @@ def generate_vault(
     _write_graph_settings(vault_dir, communities)
 
     node_count = len(nodes)
-    print(f"Wrote {node_count} notes to {vault_dir}")
+    print(
+        f"Wrote {node_count} base notes"
+        f"{f', {branch_note_count} branch delta notes' if branch_note_count else ''}"
+        f"{f', {decision_count} decision notes' if decision_count else ''}"
+        f" to {vault_dir}"
+    )
+
+
+def _write_branch_layer(
+    db: GenetDB,
+    vault_dir: Path,
+    branch: str,
+    genet: dict,
+    base_id_to_filename: dict,
+    base_node_by_id: dict,
+) -> int:
+    """Write branch-specific delta notes showing what changed.
+
+    Returns the number of notes written.
+    """
+    from ramets.core.delta import compute_deltas
+
+    branch_graph = materialize(db, branch)
+    deltas = compute_deltas(genet, branch_graph)
+
+    if not deltas:
+        return 0
+
+    # Sanitize branch name for directory
+    branch_dir_name = re.sub(r"[/\\]", "--", branch)
+    branch_dir = vault_dir / f"branch--{branch_dir_name}"
+    branch_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write branch info note
+    added = [d for d in deltas if d["op"] == "add_node"]
+    removed = [d for d in deltas if d["op"] == "rm_node"]
+    modified = [d for d in deltas if d["op"] == "mod_node"]
+    added_edges = [d for d in deltas if d["op"] == "add_edge"]
+    removed_edges = [d for d in deltas if d["op"] == "rm_edge"]
+
+    info_lines = [
+        "---",
+        f"branch: {branch}",
+        f"tags: [layer/branch, branch/{branch_dir_name}]",
+        "---",
+        "",
+        f"# Branch: {branch}",
+        "",
+        f"**+{len(added)} nodes** | **-{len(removed)} nodes** | "
+        f"**~{len(modified)} modified** | "
+        f"**+{len(added_edges)}/–{len(removed_edges)} edges**",
+        "",
+    ]
+
+    if added:
+        info_lines.append("## Added Nodes")
+        info_lines.append("")
+        for d in added[:50]:
+            label = d.get("payload", {}).get("label", d["entity_id"])
+            fname = sanitize_filename(label)
+            info_lines.append(f"- [[{fname}|{label}]]")
+        info_lines.append("")
+
+    if removed:
+        info_lines.append("## Removed Nodes")
+        info_lines.append("")
+        for d in removed[:50]:
+            eid = d["entity_id"]
+            label = base_node_by_id.get(eid, {}).get("label", eid)
+            info_lines.append(f"- ~~{label}~~")
+        info_lines.append("")
+
+    if modified:
+        info_lines.append("## Modified Nodes")
+        info_lines.append("")
+        for d in modified[:50]:
+            label = d.get("payload", {}).get("label", d["entity_id"])
+            fname = sanitize_filename(label)
+            info_lines.append(f"- [[{fname}|{label}]]")
+        info_lines.append("")
+
+    (branch_dir / "_BRANCH_INFO.md").write_text("\n".join(info_lines))
+
+    # Write individual notes for added/modified nodes
+    note_count = 1  # counting _BRANCH_INFO.md
+    branch_nodes = {n["id"]: n for n in branch_graph.get("nodes", [])}
+    branch_links = branch_graph.get("links", [])
+
+    # Build adjacency for branch graph
+    outgoing: defaultdict[str, list[tuple[str, str]]] = defaultdict(list)
+    incoming: defaultdict[str, list[tuple[str, str]]] = defaultdict(list)
+    for link in branch_links:
+        src = link.get("source", "")
+        tgt = link.get("target", "")
+        rel = link.get("relation", "unknown")
+        if src in branch_nodes and tgt in branch_nodes:
+            outgoing[src].append((rel, tgt))
+            incoming[tgt].append((rel, src))
+
+    changed_ids = {d["entity_id"] for d in added + modified}
+    for nid in changed_ids:
+        if nid not in branch_nodes:
+            continue
+        n = branch_nodes[nid]
+        label = n.get("label", nid)
+        filename = sanitize_filename(label)
+        community = n.get("community", -1)
+        file_type = n.get("file_type", "")
+        source_file = n.get("source_file", "")
+        is_new = nid not in base_node_by_id
+
+        lines = [
+            "---",
+            f"id: {nid}",
+            f"type: {file_type}",
+            f"community: {community}",
+            f"change: {'added' if is_new else 'modified'}",
+        ]
+        if source_file:
+            lines.append(f"source: {source_file}")
+        tags = [
+            f"community/C{community:02d}",
+            f"type/{file_type or 'unknown'}",
+            "layer/branch",
+            f"branch/{branch_dir_name}",
+            "delta/added" if is_new else "delta/modified",
+        ]
+        lines.append(f"tags: [{', '.join(tags)}]")
+        lines.append("---")
+        lines.append("")
+        lines.append(f"# {'🆕 ' if is_new else '✏️ '}{label}")
+        lines.append("")
+        lines.append(f"*{'Added' if is_new else 'Modified'} in `{branch}`*")
+        lines.append("")
+
+        if source_file:
+            lines.append(f"**Source:** `{source_file}`")
+            lines.append("")
+
+        # Connections
+        out = outgoing.get(nid, [])
+        if out:
+            lines.append("## Connects To")
+            lines.append("")
+            for rel, tid in out[:20]:
+                tgt_label = branch_nodes.get(tid, {}).get("label", tid)
+                tgt_name = sanitize_filename(tgt_label)
+                lines.append(f"- {RELATION_EMOJI.get(rel, '->')} [[{tgt_name}|{tgt_label}]]")
+            lines.append("")
+
+        inc = incoming.get(nid, [])
+        if inc:
+            lines.append("## Connected From")
+            lines.append("")
+            for rel, sid in inc[:20]:
+                src_label = branch_nodes.get(sid, {}).get("label", sid)
+                src_name = sanitize_filename(src_label)
+                lines.append(f"- {RELATION_EMOJI.get(rel, '<-')} [[{src_name}|{src_label}]]")
+            lines.append("")
+
+        filepath = branch_dir / f"{filename}.md"
+        filepath.write_text("\n".join(lines))
+        note_count += 1
+
+    return note_count
+
+
+def _write_decision_notes(
+    db: GenetDB,
+    vault_dir: Path,
+    branches: list[str],
+) -> int:
+    """Write decision notes as Obsidian markdown.
+
+    Returns the number of decisions written.
+    """
+    from ramets.decision.tracker import DecisionTracker
+
+    tracker = DecisionTracker(db)
+    decisions_dir = vault_dir / "decisions"
+    decisions_dir.mkdir(parents=True, exist_ok=True)
+
+    count = 0
+    for branch in branches:
+        decisions = tracker.for_branch(branch)
+        for d in decisions:
+            lines = [
+                "---",
+                f"id: {d.id}",
+                f"branch: {d.branch}",
+                f"category: {d.category.value}",
+                f"status: {d.status.value}",
+                f"confidence: {d.confidence or 'unknown'}",
+                f"tags: [decision, decision/{d.category.value}, layer/decision]",
+                "---",
+                "",
+                f"# {'💡' if d.status.value == 'active' else '👻'} {d.question}",
+                "",
+                f"**Category:** {d.category.value} | "
+                f"**Branch:** `{d.branch}` | "
+                f"**Confidence:** {d.confidence or '?'}",
+                "",
+                "## Options",
+                "",
+            ]
+
+            for i, opt in enumerate(d.options):
+                marker = "**[CHOSEN]**" if i == d.chosen else ""
+                desc = f" — {opt.description}" if opt.description else ""
+                lines.append(f"### {i + 1}. {opt.label} {marker}")
+                lines.append(f"{desc}")
+                if opt.pros:
+                    for pro in opt.pros:
+                        lines.append(f"- ✅ {pro}")
+                if opt.cons:
+                    for con in opt.cons:
+                        lines.append(f"- ❌ {con}")
+                if opt.estimated_effort:
+                    lines.append(f"- ⏱️ Effort: {opt.estimated_effort}")
+                lines.append("")
+
+            if d.rationale:
+                lines.append("## Rationale")
+                lines.append("")
+                lines.append(d.rationale)
+                lines.append("")
+
+            if d.context_files:
+                lines.append("## Related Files")
+                lines.append("")
+                for f in d.context_files:
+                    lines.append(f"- `{f}`")
+                lines.append("")
+
+            if d.commit_sha:
+                lines.append(f"*Commit: {d.commit_sha}*")
+
+            filepath = decisions_dir / f"dec_{d.id}.md"
+            filepath.write_text("\n".join(lines))
+            count += 1
+
+    return count
 
 
 def _write_index(
