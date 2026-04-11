@@ -44,7 +44,8 @@ def main():
 @main.command()
 @click.option("--no-hooks", is_flag=True, help="Skip git/Claude hook installation")
 @click.option("--no-claude-hooks", is_flag=True, help="Skip Claude Code hook installation")
-def init(no_hooks: bool, no_claude_hooks: bool):
+@click.option("--install-desktop", is_flag=True, help="Also configure Claude Desktop MCP server")
+def init(no_hooks: bool, no_claude_hooks: bool, install_desktop: bool):
     """Initialize ramets in the current repository.
 
     Creates .ramets/, builds the genet (base graph), and installs hooks.
@@ -96,6 +97,15 @@ def init(no_hooks: bool, no_claude_hooks: bool):
     # Install Claude Code skill
     if not no_claude_hooks:
         _install_skill()
+
+    # Configure Claude Desktop MCP server
+    if install_desktop:
+        from ramets.hooks.desktop import install_desktop_config, install_project_instruction
+
+        config_path = install_desktop_config(repo_root)
+        click.echo(f"Configured Claude Desktop MCP server in {config_path}")
+        if install_project_instruction(repo_root):
+            click.echo("Added session_summary instruction to CLAUDE.md")
 
     # Add .ramets/ to .gitignore
     gitignore = repo_root / ".gitignore"
@@ -499,6 +509,46 @@ def _install_skill() -> None:
         click.echo("Created ~/.claude/CLAUDE.md with /ramets skill")
 
     click.echo(f"Installed skill to {skill_dir / 'SKILL.md'}")
+
+
+@main.command()
+@click.option("--uninstall", is_flag=True, help="Remove ramets from Desktop config")
+def desktop(uninstall: bool):
+    """Configure Claude Desktop to use the ramets MCP server.
+
+    Adds ramets as an MCP server in claude_desktop_config.json and
+    writes a CLAUDE.md project instruction for automatic session_summary
+    injection on conversation start.
+
+    Examples:
+        ramets desktop               # Install Desktop config
+        ramets desktop --uninstall   # Remove Desktop config
+    """
+    repo_root = get_main_repo_root()
+
+    if uninstall:
+        from ramets.hooks.desktop import uninstall_desktop_config
+
+        result = uninstall_desktop_config()
+        if result:
+            click.echo(f"Removed ramets from {result}")
+        else:
+            click.echo("No Desktop config to remove.")
+        return
+
+    from ramets.hooks.desktop import install_desktop_config, install_project_instruction
+
+    config_path = install_desktop_config(repo_root)
+    click.echo(f"Configured Claude Desktop MCP server in {config_path}")
+    click.echo("  Server: ramets serve (stdio)")
+    click.echo(f"  Working dir: {repo_root}")
+
+    if install_project_instruction(repo_root):
+        click.echo("Added session_summary instruction to CLAUDE.md")
+    else:
+        click.echo("CLAUDE.md already has session_summary instruction")
+
+    click.echo("\nRestart Claude Desktop to pick up the new MCP server.")
 
 
 @main.command()
