@@ -7,7 +7,6 @@ a NetworkX DiGraph for querying. Caches the result as a ramet snapshot.
 from __future__ import annotations
 
 from collections import defaultdict
-from pathlib import Path
 
 import networkx as nx
 

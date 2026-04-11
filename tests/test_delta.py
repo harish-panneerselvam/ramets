@@ -45,7 +45,7 @@ class TestComputeDeltas:
         """Detects removed nodes."""
         branch = {
             "nodes": [n for n in genet["nodes"] if n["id"] != "c"],
-            "links": [l for l in genet["links"] if l["target"] != "c"],
+            "links": [link for link in genet["links"] if link["target"] != "c"],
         }
         deltas = compute_deltas(genet, branch)
         rm_nodes = [d for d in deltas if d["op"] == "rm_node"]

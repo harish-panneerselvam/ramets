@@ -35,7 +35,7 @@ def extract_graph(repo_path: Path) -> dict:
     except ImportError:
         pass  # graphify not installed, try fallback
 
-    except Exception as e:
+    except Exception:
         # graphify failed, try fallback
         pass
 

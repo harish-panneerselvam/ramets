@@ -6,7 +6,6 @@ that keep the genet and ramets up to date. Zero LLM tokens — all local.
 
 from __future__ import annotations
 
-import os
 import stat
 from pathlib import Path
 from textwrap import dedent

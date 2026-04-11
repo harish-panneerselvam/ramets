@@ -1,8 +1,6 @@
 """Tests for the genet database (core/db.py)."""
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 

@@ -111,7 +111,7 @@ def generate_vault(
         if source_file:
             lines.append(f"source: {source_file}")
         tags = [f"community/C{community:02d}", f"type/{file_type or 'unknown'}",
-                f"layer/base"]
+                "layer/base"]
         lines.append(f"tags: [{', '.join(tags)}]")
         lines.append("---")
         lines.append("")
@@ -171,7 +171,6 @@ def generate_vault(
     _write_graph_settings(vault_dir, communities)
 
     node_count = len(nodes)
-    edge_count = len(links)
     print(f"Wrote {node_count} notes to {vault_dir}")
 
 

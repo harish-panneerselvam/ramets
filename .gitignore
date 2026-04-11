@@ -28,3 +28,7 @@ Thumbs.db
 
 # ramets data (local to each repo, not committed)
 .ramets/
+
+# graphify output (side effect of AST extraction)
+graphify-out/
+.graphify_*

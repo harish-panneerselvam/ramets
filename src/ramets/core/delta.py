@@ -6,8 +6,6 @@ that transform the genet into the branch-specific graph.
 
 from __future__ import annotations
 
-import json
-from typing import Any
 
 
 def compute_deltas(genet: dict, branch_graph: dict) -> list[dict]:

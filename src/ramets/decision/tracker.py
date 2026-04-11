@@ -6,7 +6,6 @@ Records structured decisions in SQLite and provides query interfaces.
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 from ramets.core.db import GenetDB
 from ramets.decision.schema import Decision, DecisionRelation, Option

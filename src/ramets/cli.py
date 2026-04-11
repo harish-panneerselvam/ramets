@@ -107,7 +107,7 @@ def init(no_hooks: bool, no_claude_hooks: bool):
 
     db.close()
 
-    click.echo(f"\nReady! Try: ramets query \"how does the main module work?\"")
+    click.echo("\nReady! Try: ramets query \"how does the main module work?\"")
     click.echo(f"Storage: {db_path.stat().st_size / 1024:.0f} KB")
 
 
