@@ -146,14 +146,17 @@ def update():
     branch_graph = extract_graph(repo_root)
     deltas = compute_deltas(genet, branch_graph)
 
-    if deltas:
-        from ramets.core.branch import current_commit
+    from ramets.core.branch import current_commit
 
-        commit = current_commit(cwd=repo_root)
+    commit = current_commit(cwd=repo_root)
+
+    # Replace deltas (compute_deltas returns full diff vs genet, not incremental)
+    db.conn.execute("DELETE FROM ramet_deltas WHERE branch = ?", (branch,))
+    db.conn.execute("DELETE FROM ramets WHERE branch = ?", (branch,))
+    db.conn.commit()
+
+    if deltas:
         db.append_deltas(branch, commit, deltas)
-        # Invalidate cached ramet
-        db.conn.execute("DELETE FROM ramets WHERE branch = ?", (branch,))
-        db.conn.commit()
         click.echo(f"{len(deltas)} deltas for {branch}")
     else:
         click.echo(f"No changes for {branch}")
@@ -284,7 +287,9 @@ def gc():
     if stale:
         for b in stale:
             db.delete_ramet(b["name"])
+            db.conn.execute("DELETE FROM branches WHERE name = ?", (b["name"],))
             click.echo(f"  Pruned: {b['name']}")
+        db.conn.commit()
         click.echo(f"Pruned {len(stale)} stale ramets")
     else:
         click.echo("No stale ramets to prune")

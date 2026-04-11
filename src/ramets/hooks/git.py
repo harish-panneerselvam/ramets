@@ -141,11 +141,12 @@ def _hook_contents() -> dict[str, str]:
             commit = current_commit()
             branch_graph = extract_graph(repo)
             deltas = compute_deltas(genet, branch_graph)
+            # Replace deltas (compute_deltas gives full diff vs genet)
+            db.conn.execute('DELETE FROM ramet_deltas WHERE branch = ?', (branch,))
+            db.conn.execute('DELETE FROM ramets WHERE branch = ?', (branch,))
+            db.conn.commit()
             if deltas:
                 db.append_deltas(branch, commit, deltas)
-                # Invalidate cached ramet
-                db.conn.execute('DELETE FROM ramets WHERE branch = ?', (branch,))
-                db.conn.commit()
                 print(f'[ramets] {{len(deltas)}} deltas for {{branch}}')
             db.close()
         except Exception as e:
@@ -207,10 +208,12 @@ def _hook_contents() -> dict[str, str]:
                 sys.exit(0)
             branch_graph = extract_graph(repo)
             deltas = compute_deltas(genet, branch_graph)
+            # Replace deltas (compute_deltas gives full diff vs genet)
+            db.conn.execute('DELETE FROM ramet_deltas WHERE branch = ?', (branch,))
+            db.conn.execute('DELETE FROM ramets WHERE branch = ?', (branch,))
+            db.conn.commit()
             if deltas:
                 db.append_deltas(branch, commit, deltas)
-                db.conn.execute('DELETE FROM ramets WHERE branch = ?', (branch,))
-                db.conn.commit()
                 print(f'[ramets] post-merge: {{len(deltas)}} deltas for {{branch}}')
             db.close()
         except Exception as e:
