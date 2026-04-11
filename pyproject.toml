@@ -7,7 +7,7 @@ name = "ramets"
 version = "0.2.0"
 description = "Per-branch AI coding context — delta-encoded knowledge graphs, decision tracking, and Obsidian visualization. Your codebase is one organism. Each branch is a ramet."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.10"
 authors = [
     {name = "Harish Panneer Selvam"},
@@ -20,7 +20,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Version Control :: Git",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
