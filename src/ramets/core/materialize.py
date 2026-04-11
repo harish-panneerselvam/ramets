@@ -217,6 +217,22 @@ def summary(db: GenetDB, branch: str | None = None) -> str:
     genet_meta = db.genet_meta()
     genet_commit = genet_meta["commit_sha"] if genet_meta else "unknown"
 
+    # Recent decisions (~50 extra tokens)
+    decision_lines = ""
+    try:
+        from ramets.decision.tracker import DecisionTracker
+
+        tracker = DecisionTracker(db)
+        recent = tracker.query(branch=branch, status="active")[:5]
+        if recent:
+            items = []
+            for d in recent:
+                chosen_label = d.options[d.chosen].label if d.options else "?"
+                items.append(f"  {chosen_label} ({d.category.value}): {d.question}")
+            decision_lines = "\n\n### Recent Decisions\n" + "\n".join(items)
+    except Exception:
+        pass  # Decisions are best-effort
+
     return f"""## ramets: {branch} ({node_count} nodes, {edge_count} edges)
 Genet: {genet_commit} | Deltas: {delta_count}
 
@@ -224,7 +240,7 @@ Genet: {genet_commit} | Deltas: {delta_count}
 {gods}
 
 ### Communities (top 15 of {len(communities)})
-{comm_summary}
+{comm_summary}{decision_lines}
 
 ### Usage
 - Query: ramets query "question"

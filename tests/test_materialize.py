@@ -175,3 +175,52 @@ class TestMaterializeRoundtrip:
         count_2 = db.delta_count("feat/test")
 
         assert count_1 == count_2  # Same count, not doubled
+
+
+class TestSummaryWithDecisions:
+    """Test that summary() includes recent decisions."""
+
+    def test_summary_includes_decisions(self, db, sample_graph):
+        """Summary includes Recent Decisions section when decisions exist."""
+        from unittest.mock import patch
+
+        from ramets.core.materialize import summary as gen_summary
+        from ramets.decision.schema import Decision, DecisionCategory, Option
+        from ramets.decision.tracker import DecisionTracker
+
+        db.store_genet(sample_graph, "abc123")
+        db.register_branch("feat/auth")
+
+        # Record a decision
+        tracker = DecisionTracker(db)
+        d = Decision(
+            branch="feat/auth",
+            category=DecisionCategory.architecture,
+            question="Which auth strategy?",
+            options=[Option(label="JWT"), Option(label="Sessions")],
+            chosen=0,
+            commit_sha="abc123",
+        )
+        tracker.record(d)
+
+        with patch("ramets.core.materialize.current_branch", return_value="feat/auth"):
+            result = gen_summary(db, branch="feat/auth")
+
+        assert "### Recent Decisions" in result
+        assert "JWT" in result
+        assert "architecture" in result
+
+    def test_summary_without_decisions(self, db, sample_graph):
+        """Summary works fine with no decisions."""
+        from unittest.mock import patch
+
+        from ramets.core.materialize import summary as gen_summary
+
+        db.store_genet(sample_graph, "abc123")
+        db.register_branch("main")
+
+        with patch("ramets.core.materialize.current_branch", return_value="main"):
+            result = gen_summary(db, branch="main")
+
+        assert "### Recent Decisions" not in result
+        assert "### Usage" in result

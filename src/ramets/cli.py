@@ -44,7 +44,8 @@ def main():
 @main.command()
 @click.option("--no-hooks", is_flag=True, help="Skip git/Claude hook installation")
 @click.option("--no-claude-hooks", is_flag=True, help="Skip Claude Code hook installation")
-def init(no_hooks: bool, no_claude_hooks: bool):
+@click.option("--install-desktop", is_flag=True, help="Also configure Claude Desktop MCP server")
+def init(no_hooks: bool, no_claude_hooks: bool, install_desktop: bool):
     """Initialize ramets in the current repository.
 
     Creates .ramets/, builds the genet (base graph), and installs hooks.
@@ -97,6 +98,15 @@ def init(no_hooks: bool, no_claude_hooks: bool):
     if not no_claude_hooks:
         _install_skill()
 
+    # Configure Claude Desktop MCP server
+    if install_desktop:
+        from ramets.hooks.desktop import install_desktop_config, install_project_instruction
+
+        config_path = install_desktop_config(repo_root)
+        click.echo(f"Configured Claude Desktop MCP server in {config_path}")
+        if install_project_instruction(repo_root):
+            click.echo("Added session_summary instruction to CLAUDE.md")
+
     # Add .ramets/ to .gitignore
     gitignore = repo_root / ".gitignore"
     if gitignore.exists():
@@ -110,6 +120,12 @@ def init(no_hooks: bool, no_claude_hooks: bool):
         click.echo("Created .gitignore with .ramets/")
 
     db.close()
+
+    # Write default config
+    from ramets.decision.config import save_default_config
+
+    save_default_config(repo_root)
+    click.echo("Created default config at .ramets/config.json")
 
     click.echo('\nReady! Try: ramets query "how does the main module work?"')
     click.echo(f"Storage: {db_path.stat().st_size / 1024:.0f} KB")
@@ -502,6 +518,46 @@ def _install_skill() -> None:
 
 
 @main.command()
+@click.option("--uninstall", is_flag=True, help="Remove ramets from Desktop config")
+def desktop(uninstall: bool):
+    """Configure Claude Desktop to use the ramets MCP server.
+
+    Adds ramets as an MCP server in claude_desktop_config.json and
+    writes a CLAUDE.md project instruction for automatic session_summary
+    injection on conversation start.
+
+    Examples:
+        ramets desktop               # Install Desktop config
+        ramets desktop --uninstall   # Remove Desktop config
+    """
+    repo_root = get_main_repo_root()
+
+    if uninstall:
+        from ramets.hooks.desktop import uninstall_desktop_config
+
+        result = uninstall_desktop_config()
+        if result:
+            click.echo(f"Removed ramets from {result}")
+        else:
+            click.echo("No Desktop config to remove.")
+        return
+
+    from ramets.hooks.desktop import install_desktop_config, install_project_instruction
+
+    config_path = install_desktop_config(repo_root)
+    click.echo(f"Configured Claude Desktop MCP server in {config_path}")
+    click.echo("  Server: ramets serve (stdio)")
+    click.echo(f"  Working dir: {repo_root}")
+
+    if install_project_instruction(repo_root):
+        click.echo("Added session_summary instruction to CLAUDE.md")
+    else:
+        click.echo("CLAUDE.md already has session_summary instruction")
+
+    click.echo("\nRestart Claude Desktop to pick up the new MCP server.")
+
+
+@main.command()
 def gc():
     """Prune dead ramets, compact the genet database."""
     db = _get_db()
@@ -535,6 +591,89 @@ def gc():
     db.close()
 
 
+@main.group("config")
+def config_group():
+    """View or modify ramets configuration.
+
+    Examples:
+        ramets config show
+        ramets config set auto_decisions.commit_mining.enabled false
+        ramets config set auto_decisions.session_end.enabled true
+    """
+    pass
+
+
+@config_group.command("show")
+def config_show():
+    """Display current ramets configuration."""
+    import json as _json
+
+    from ramets.decision.config import load_config
+
+    repo_root = get_main_repo_root()
+    cfg = load_config(repo_root)
+    click.echo(_json.dumps({"auto_decisions": cfg.model_dump()}, indent=2))
+
+
+@config_group.command("set")
+@click.argument("key")
+@click.argument("value")
+def config_set(key: str, value: str):
+    """Set a config value using dot-notation.
+
+    Examples:
+        ramets config set auto_decisions.strategy session-end
+        ramets config set auto_decisions.commit_mining.enabled false
+        ramets config set auto_decisions.commit_mining.min_confidence 0.3
+    """
+    from ramets.decision.config import load_config, save_config
+
+    repo_root = get_main_repo_root()
+    cfg = load_config(repo_root)
+
+    # Parse dot-notation key (strip auto_decisions prefix if present)
+    parts = key.split(".")
+    if parts[0] == "auto_decisions":
+        parts = parts[1:]
+
+    if not parts:
+        click.echo("Error: empty key after stripping auto_decisions prefix", err=True)
+        sys.exit(1)
+
+    # Convert value to appropriate type
+    parsed_value: object
+    if value.lower() in ("true", "false"):
+        parsed_value = value.lower() == "true"
+    else:
+        try:
+            parsed_value = float(value)
+            if parsed_value == int(parsed_value):
+                parsed_value = int(parsed_value)
+        except ValueError:
+            parsed_value = value
+
+    # Navigate to the right field
+    obj = cfg.model_dump()
+    target = obj
+    for part in parts[:-1]:
+        if part not in target:
+            click.echo(f"Error: unknown config key '{key}'", err=True)
+            sys.exit(1)
+        target = target[part]
+
+    if parts[-1] not in target:
+        click.echo(f"Error: unknown config key '{key}'", err=True)
+        sys.exit(1)
+
+    target[parts[-1]] = parsed_value
+
+    from ramets.decision.config import AutoDecisionConfig
+
+    updated = AutoDecisionConfig.model_validate(obj)
+    save_config(repo_root, updated)
+    click.echo(f"Set {key} = {parsed_value}")
+
+
 @main.command()
 def serve():
     """Start MCP server (stdio for Claude Code)."""
@@ -548,6 +687,58 @@ def serve():
             err=True,
         )
         sys.exit(1)
+
+
+@main.command()
+def rebase():
+    """Recompute genet and all branch deltas after a git rebase.
+
+    After rebasing, the merge-base changes and existing deltas may be
+    invalid. This command rebuilds the genet from HEAD and recomputes
+    deltas for every registered branch.
+    """
+    db = _get_db()
+    repo_root = get_main_repo_root()
+
+    # Step 1: Rebuild genet
+    click.echo("Rebuilding genet from HEAD...")
+    from ramets.core.base import build_genet
+
+    graph_data = build_genet(db, repo_root)
+    node_count = len(graph_data.get("nodes", []))
+    edge_count = len(graph_data.get("links", []))
+    click.echo(f"Genet rebuilt: {node_count} nodes, {edge_count} edges")
+
+    # Step 2: Recompute deltas for all registered branches
+    from ramets.core.branch import current_commit
+    from ramets.core.delta import compute_deltas
+    from ramets.extract.ast_bridge import extract_graph
+
+    branches = db.list_branches()
+    if not branches:
+        click.echo("No branches registered.")
+        db.close()
+        return
+
+    branch_graph = extract_graph(repo_root)
+    commit = current_commit(cwd=repo_root)
+
+    for b in branches:
+        name = b["name"]
+        # Clear old deltas and cached ramets
+        db.conn.execute("DELETE FROM ramet_deltas WHERE branch = ?", (name,))
+        db.conn.execute("DELETE FROM ramets WHERE branch = ?", (name,))
+        db.conn.commit()
+
+        deltas = compute_deltas(graph_data, branch_graph)
+        if deltas:
+            db.append_deltas(name, commit, deltas)
+            click.echo(f"  {name}: {len(deltas)} deltas")
+        else:
+            click.echo(f"  {name}: no changes")
+
+    click.echo(f"Recomputed deltas for {len(branches)} branches")
+    db.close()
 
 
 if __name__ == "__main__":

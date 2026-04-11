@@ -148,6 +148,28 @@ def _hook_contents() -> dict[str, str]:
             if deltas:
                 db.append_deltas(branch, commit, deltas)
                 print(f'[ramets] {{len(deltas)}} deltas for {{branch}}')
+            # Decision mining (zero LLM tokens)
+            try:
+                from ramets.decision.config import load_config
+                cfg = load_config(repo)
+                if cfg.commit_mining.enabled:
+                    import subprocess as _sp
+                    _msg = _sp.check_output(['git', 'log', '-1', '--format=%B'], text=True, cwd=str(repo)).strip()
+                    _files = _sp.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'], text=True, cwd=str(repo)).strip().split('\\n')
+                    _files = [f for f in _files if f]
+                    from ramets.decision.mining import mine_commit
+                    from ramets.decision.tracker import DecisionTracker
+                    _decisions = mine_commit(_msg, branch, commit, _files, cfg.commit_mining.min_confidence, cfg.commit_mining.ignore_prefixes)
+                    if _decisions:
+                        _tracker = DecisionTracker(db)
+                        _recorded = 0
+                        for _d in _decisions:
+                            if _tracker.record_if_new(_d):
+                                _recorded += 1
+                        if _recorded:
+                            print(f'[ramets] {{_recorded}} decision(s) mined from commit')
+            except Exception:
+                pass  # Decision mining is best-effort
             db.close()
         except Exception as e:
             print(f'[ramets] post-commit hook failed: {{e}}', file=sys.stderr)

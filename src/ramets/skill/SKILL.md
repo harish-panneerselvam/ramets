@@ -96,7 +96,10 @@ ramets obsidian --all-branches       # Include all branch layers
 ### Maintenance
 ```bash
 ramets gc                            # Prune stale branches, compact DB
+ramets rebase                        # Recompute genet + all deltas after git rebase
 ramets serve                         # Start MCP server (stdio)
+ramets desktop                       # Configure Claude Desktop MCP server
+ramets desktop --uninstall           # Remove Desktop config
 ```
 
 ## IMPORTANT rules
@@ -109,14 +112,15 @@ ramets serve                         # Start MCP server (stdio)
 
 ## MCP server
 
-If the MCP server is running (`ramets serve`), these tools are available:
-- `query_graph` — Search the knowledge graph
-- `get_node` — Get node details + connections
-- `diff_branches` — Compare branch graphs
-- `session_summary` — Get session start context
-- `record_decision` — Record a decision
-- `list_decisions` / `search_decisions` — Find decisions
-- `generate_obsidian_vault` — Update the Obsidian vault
+If the MCP server is running (`ramets serve`), these 15 tools are available:
+
+**Code graph (7):** `query_graph`, `get_node`, `get_neighbors`, `diff_branches`, `branch_status`, `shortest_path`, `get_community`
+
+**Decisions (5):** `record_decision`, `list_decisions`, `get_decision`, `search_decisions`, `supersede_decision`
+
+**Obsidian (2):** `generate_obsidian_vault`, `obsidian_status`
+
+**Session (1):** `session_summary` (~400 tokens for session start context)
 
 ## Installation
 
