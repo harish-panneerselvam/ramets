@@ -97,6 +97,13 @@ _CLAUDE_MD_SECTION = """\
 # ramets — automatic context injection
 At the start of every conversation about this codebase, call the \
 session_summary MCP tool first to get branch-aware context (~400 tokens).
+
+When you make a design choice between alternatives during a session, \
+call the record_decision MCP tool with question, options, chosen index, \
+and rationale. Do this inline as you work, not just at the end.
+
+Before ending a conversation, record any remaining decisions you haven't \
+captured yet using record_decision.
 """
 
 
