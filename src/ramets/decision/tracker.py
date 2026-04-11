@@ -110,8 +110,7 @@ class DecisionTracker:
         """Add a relationship between decisions (or decision → code node)."""
         with self.db.transaction() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO decision_edges (source, target, relation) "
-                "VALUES (?, ?, ?)",
+                "INSERT OR REPLACE INTO decision_edges (source, target, relation) VALUES (?, ?, ?)",
                 (source, target, relation.value),
             )
 

@@ -30,7 +30,8 @@ class TestComputeDeltas:
     def test_added_node(self, genet):
         """Detects added nodes."""
         branch = {
-            "nodes": genet["nodes"] + [
+            "nodes": genet["nodes"]
+            + [
                 {"id": "d", "label": "ModuleD", "file_type": "code", "community": 2},
             ],
             "links": genet["links"],
@@ -71,7 +72,8 @@ class TestComputeDeltas:
         """Detects added edges."""
         branch = {
             "nodes": genet["nodes"],
-            "links": genet["links"] + [
+            "links": genet["links"]
+            + [
                 {"source": "a", "target": "c", "relation": "uses"},
             ],
         }
@@ -114,10 +116,8 @@ class TestApplyDeltas:
         assert recon_ids == branch_ids
 
         # Same edges
-        recon_edges = {(e["source"], e["target"], e["relation"])
-                       for e in reconstructed["links"]}
-        branch_edges = {(e["source"], e["target"], e["relation"])
-                        for e in branch["links"]}
+        recon_edges = {(e["source"], e["target"], e["relation"]) for e in reconstructed["links"]}
+        branch_edges = {(e["source"], e["target"], e["relation"]) for e in branch["links"]}
         assert recon_edges == branch_edges
 
     def test_empty_deltas(self, genet):
@@ -128,10 +128,17 @@ class TestApplyDeltas:
     def test_no_mutation(self, genet):
         """apply_deltas doesn't mutate the input genet."""
         import copy
+
         original = copy.deepcopy(genet)
 
-        deltas = [{"op": "add_node", "entity_type": "node", "entity_id": "x",
-                    "payload": {"id": "x", "label": "X"}}]
+        deltas = [
+            {
+                "op": "add_node",
+                "entity_type": "node",
+                "entity_id": "x",
+                "payload": {"id": "x", "label": "X"},
+            }
+        ]
         apply_deltas(genet, deltas)
 
         assert genet == original  # unchanged

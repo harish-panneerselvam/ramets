@@ -155,9 +155,7 @@ class GenetDB:
         # Set schema version
         cur = self.conn.execute("SELECT version FROM schema_version LIMIT 1")
         if cur.fetchone() is None:
-            self.conn.execute(
-                "INSERT INTO schema_version (version) VALUES (?)", (SCHEMA_VERSION,)
-            )
+            self.conn.execute("INSERT INTO schema_version (version) VALUES (?)", (SCHEMA_VERSION,))
         self.conn.commit()
 
     def close(self) -> None:
@@ -192,9 +190,7 @@ class GenetDB:
 
     def load_genet(self) -> dict | None:
         """Load the base graph. Returns None if no genet exists."""
-        row = self.conn.execute(
-            "SELECT graph_blob, commit_sha FROM genet WHERE id = 1"
-        ).fetchone()
+        row = self.conn.execute("SELECT graph_blob, commit_sha FROM genet WHERE id = 1").fetchone()
         if row is None:
             return None
         return decompress_graph(row["graph_blob"])
@@ -310,13 +306,13 @@ class GenetDB:
 
     # ── Branch registry ────────────────────────────────────────────
 
-    def register_branch(self, name: str, merge_base: str | None = None,
-                        worktree: str | None = None) -> None:
+    def register_branch(
+        self, name: str, merge_base: str | None = None, worktree: str | None = None
+    ) -> None:
         """Register a branch in the registry."""
         with self.transaction() as conn:
             conn.execute(
-                "INSERT OR IGNORE INTO branches (name, merge_base, worktree) "
-                "VALUES (?, ?, ?)",
+                "INSERT OR IGNORE INTO branches (name, merge_base, worktree) VALUES (?, ?, ?)",
                 (name, merge_base, worktree),
             )
 
@@ -327,6 +323,7 @@ class GenetDB:
 
 
 # ── Compression helpers ────────────────────────────────────────────
+
 
 def compress_graph(graph_data: dict) -> bytes:
     """Compress a graph dict to a zlib blob."""

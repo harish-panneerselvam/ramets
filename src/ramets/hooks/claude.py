@@ -36,6 +36,7 @@ def install_claude_hooks(repo_path: Path | None = None) -> None:
 def _write_session_start(hooks_dir: Path, repo_path: Path) -> None:
     """Write the SessionStart hook script."""
     import sys
+
     python = sys.executable
 
     script = dedent(f"""\
@@ -164,35 +165,51 @@ def _update_settings_json(repo_path: Path) -> None:
 
     # SessionStart
     session_hooks = hooks.setdefault("SessionStart", [])
-    _upsert_hook(session_hooks, {
-        "hooks": [{
-            "type": "command",
-            "command": '"$CLAUDE_PROJECT_DIR/.claude/hooks/ramets-session-start.sh"',
-            "timeout": 15,
-            "statusMessage": "Loading ramets knowledge graph...",
-        }],
-    })
+    _upsert_hook(
+        session_hooks,
+        {
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": '"$CLAUDE_PROJECT_DIR/.claude/hooks/ramets-session-start.sh"',
+                    "timeout": 15,
+                    "statusMessage": "Loading ramets knowledge graph...",
+                }
+            ],
+        },
+    )
 
     # UserPromptSubmit
     prompt_hooks = hooks.setdefault("UserPromptSubmit", [])
-    _upsert_hook(prompt_hooks, {
-        "hooks": [{
-            "type": "command",
-            "command": '"$CLAUDE_PROJECT_DIR/.claude/hooks/ramets-prompt-enrich.sh"',
-            "timeout": 5,
-        }],
-    })
+    _upsert_hook(
+        prompt_hooks,
+        {
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": '"$CLAUDE_PROJECT_DIR/.claude/hooks/ramets-prompt-enrich.sh"',
+                    "timeout": 5,
+                }
+            ],
+        },
+    )
 
     # PreToolUse for Glob|Grep
     pre_tool_hooks = hooks.setdefault("PreToolUse", [])
-    _upsert_hook(pre_tool_hooks, {
-        "matcher": "Glob|Grep|Read",
-        "hooks": [{
-            "type": "command",
-            "command": '"$CLAUDE_PROJECT_DIR/.claude/hooks/ramets-gate-reads.sh"',
-            "timeout": 5,
-        }],
-    }, match_key="matcher")
+    _upsert_hook(
+        pre_tool_hooks,
+        {
+            "matcher": "Glob|Grep|Read",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": '"$CLAUDE_PROJECT_DIR/.claude/hooks/ramets-gate-reads.sh"',
+                    "timeout": 5,
+                }
+            ],
+        },
+        match_key="matcher",
+    )
 
     settings_path.write_text(json.dumps(settings, indent=2) + "\n")
 

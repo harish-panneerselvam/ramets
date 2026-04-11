@@ -106,6 +106,7 @@ def _install_hook(hook_path: Path, content: str) -> None:
 def _find_ramets_python() -> str:
     """Find the Python interpreter that has ramets installed."""
     import sys
+
     return sys.executable
 
 

@@ -22,12 +22,27 @@ def sample_graph():
     """A minimal graph for testing."""
     return {
         "nodes": [
-            {"id": "a", "label": "ModuleA", "file_type": "code",
-             "source_file": "src/a.py", "community": 0},
-            {"id": "b", "label": "ModuleB", "file_type": "code",
-             "source_file": "src/b.py", "community": 0},
-            {"id": "c", "label": "ModuleC", "file_type": "code",
-             "source_file": "src/c.py", "community": 1},
+            {
+                "id": "a",
+                "label": "ModuleA",
+                "file_type": "code",
+                "source_file": "src/a.py",
+                "community": 0,
+            },
+            {
+                "id": "b",
+                "label": "ModuleB",
+                "file_type": "code",
+                "source_file": "src/b.py",
+                "community": 0,
+            },
+            {
+                "id": "c",
+                "label": "ModuleC",
+                "file_type": "code",
+                "source_file": "src/c.py",
+                "community": 1,
+            },
         ],
         "links": [
             {"source": "a", "target": "b", "relation": "calls"},
@@ -114,10 +129,18 @@ class TestRametStorage:
         """Deleting a ramet removes snapshot, deltas, and branch entry."""
         db.store_ramet("feat/x", sample_graph, "abc")
         db.register_branch("feat/x")
-        db.append_deltas("feat/x", "abc", [
-            {"op": "add_node", "entity_type": "node", "entity_id": "new",
-             "payload": {"id": "new", "label": "New"}},
-        ])
+        db.append_deltas(
+            "feat/x",
+            "abc",
+            [
+                {
+                    "op": "add_node",
+                    "entity_type": "node",
+                    "entity_id": "new",
+                    "payload": {"id": "new", "label": "New"},
+                },
+            ],
+        )
 
         db.delete_ramet("feat/x")
         assert db.load_ramet("feat/x") is None
@@ -128,8 +151,12 @@ class TestDeltas:
     def test_append_and_load(self, db):
         """Append deltas and load them back."""
         deltas = [
-            {"op": "add_node", "entity_type": "node", "entity_id": "x",
-             "payload": {"id": "x", "label": "X"}},
+            {
+                "op": "add_node",
+                "entity_type": "node",
+                "entity_id": "x",
+                "payload": {"id": "x", "label": "X"},
+            },
             {"op": "rm_edge", "entity_type": "edge", "entity_id": "a|b|calls"},
         ]
         db.append_deltas("feat/test", "abc", deltas)
@@ -145,9 +172,13 @@ class TestDeltas:
         """Delta count is accurate."""
         assert db.delta_count("feat/test") == 0
 
-        db.append_deltas("feat/test", "abc", [
-            {"op": "add_node", "entity_type": "node", "entity_id": "x"},
-        ])
+        db.append_deltas(
+            "feat/test",
+            "abc",
+            [
+                {"op": "add_node", "entity_type": "node", "entity_id": "x"},
+            ],
+        )
         assert db.delta_count("feat/test") == 1
 
 
