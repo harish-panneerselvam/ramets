@@ -1,6 +1,76 @@
 # CHANGELOG
 
 
+## v0.5.0 (2026-04-11)
+
+### Features
+
+- Claude Desktop MCP config + session_summary auto-injection
+  ([#8](https://github.com/panne027/ramets/pull/8),
+  [`f712cb6`](https://github.com/panne027/ramets/commit/f712cb6b5c6105dc1687a10a61980469abd41549))
+
+* feat: add Claude Desktop MCP config generation and project instruction
+
+Add `ramets desktop` command and `--install-desktop` flag on `init` to configure Claude Desktop's
+  MCP server connection. This enables Desktop users to access all 12 ramets MCP tools (query_graph,
+  session_summary, record_decision, etc.) via stdio transport.
+
+Also writes a CLAUDE.md project instruction that tells Desktop to call session_summary automatically
+  on conversation start, matching the SessionStart hook behavior in Claude Code.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+
+* feat: add get_neighbors, shortest_path, get_community MCP tools
+
+Complete the planned 15-tool MCP server by adding the 3 missing graph traversal tools: -
+  get_neighbors: adjacent nodes with relation types (in/out/both) - shortest_path: find path between
+  nodes using nx.shortest_path - get_community: list all nodes in a community with internal edge
+  count
+
+All tools follow the existing fuzzy-label-match pattern from get_node.
+
+* feat: implement Obsidian 3D graph config and extract branch layers
+
+Replace the config.py and layers.py stubs with full implementations:
+
+- config.py: Generate 3D graph plugin config (Apoo711/obsidian-3d-graph) with community coloring,
+  branch colors, and decision highlighting - layers.py: Extract branch delta rendering from vault.py
+  into a clean public API (render_branch_layers) for reuse
+
+vault.py now delegates to layers.render_branch_layers() and calls config.generate_3d_config() during
+  vault generation.
+
+* feat: add `ramets rebase` command and update SKILL.md with all 15 tools
+
+Add `ramets rebase` to rebuild genet from HEAD and recompute deltas for all registered branches
+  after a git rebase invalidates the merge-base.
+
+Update SKILL.md to document: - All 15 MCP tools (was listing only 7) - New CLI commands: rebase,
+  desktop
+
+* style: apply ruff formatting to new files
+
+* feat: auto-decision capture with configurable strategies
+
+Add 3-tier decision capture system (commit-mining, claude-instruction, session-end) with dedup via
+  commit SHA + Jaccard keyword similarity.
+
+- decision/config.py: Pydantic config at .ramets/config.json - decision/mining.py: Regex commit
+  message parser (5 patterns, 0 tokens) - decision/tracker.py: has_similar_decision() dedup,
+  record_if_new() - hooks/git.py: Mine decisions in post-commit hook - hooks/claude.py: Stop hook
+  for session-end capture + instruction - hooks/desktop.py: Extended CLAUDE.md with decision
+  recording - core/materialize.py: Recent Decisions in session_summary (~50 tokens) - cli.py:
+  `ramets config show/set` + init writes default config - 53 new tests (mining, config, dedup,
+  summary with decisions)
+
+Also fixes: unused nx import in server.py, backslash f-string in layers.py, unused pytest import in
+  test_desktop.py.
+
+---------
+
+Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>
+
+
 ## v0.4.0 (2026-04-11)
 
 ### Features
