@@ -1,6 +1,33 @@
 # CHANGELOG
 
 
+## v0.2.1 (2026-04-11)
+
+### Bug Fixes
+
+- Release build permission error + license format ([#5](https://github.com/panne027/ramets/pull/5),
+  [`3acf352`](https://github.com/panne027/ramets/commit/3acf352a874df3200b06ba94afc5c5168ac7eca1))
+
+* fix: clean dist/ before build in release workflow + fix license format
+
+The semantic-release action creates dist/ with restricted permissions, causing the subsequent build
+  step to fail with PermissionError. Adding rm -rf dist/ before python -m build resolves this.
+
+Also updates license field in pyproject.toml from table format to string format to fix setuptools
+  deprecation warning.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+
+* fix: remove license classifier for PEP 639 compatibility
+
+Newer setuptools enforces that license classifiers can't coexist with the PEP 639 license expression
+  field.
+
+---------
+
+Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>
+
+
 ## v0.2.0 (2026-04-11)
 
 ### Features
