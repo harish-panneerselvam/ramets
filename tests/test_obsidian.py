@@ -1,4 +1,6 @@
-"""Tests for Obsidian vault generation (obsidian/vault.py)."""
+"""Tests for Obsidian vault generation (obsidian/vault.py, config.py, layers.py)."""
+
+import json
 
 import pytest
 
@@ -165,7 +167,8 @@ class TestVaultGeneration:
         vault_dir = tmp_path / "vault"
         with patch("ramets.obsidian.vault.current_branch", return_value="feat/test"):
             with patch("ramets.obsidian.vault.materialize", return_value=branch_graph):
-                generate_vault(db, vault_dir)
+                with patch("ramets.obsidian.layers.materialize", return_value=branch_graph):
+                    generate_vault(db, vault_dir)
 
         # Branch layer directory should exist
         branch_dir = vault_dir / "branch--feat--test"
@@ -210,3 +213,103 @@ class TestVaultGeneration:
         assert "Which auth strategy?" in content
         assert "JWT" in content
         assert "[CHOSEN]" in content
+
+
+class Test3DConfig:
+    def test_generates_plugin_dir(self, tmp_path):
+        from ramets.obsidian.config import generate_3d_config
+
+        communities = {0: [{"id": "a", "label": "A"}], 1: [{"id": "b", "label": "B"}]}
+        generate_3d_config(tmp_path, communities)
+
+        plugin_dir = tmp_path / ".obsidian" / "plugins" / "3d-graph"
+        assert plugin_dir.exists()
+        assert (plugin_dir / "manifest.json").exists()
+        assert (plugin_dir / "data.json").exists()
+        assert (plugin_dir / "styles.css").exists()
+
+    def test_manifest_content(self, tmp_path):
+        from ramets.obsidian.config import generate_3d_config
+
+        generate_3d_config(tmp_path, {0: []})
+        manifest = json.loads((tmp_path / ".obsidian" / "plugins" / "3d-graph" / "manifest.json").read_text())
+        assert manifest["id"] == "3d-graph"
+        assert manifest["name"] == "3D Graph"
+
+    def test_community_color_groups(self, tmp_path):
+        from ramets.obsidian.config import generate_3d_config
+
+        communities = {0: [], 1: [], 2: []}
+        generate_3d_config(tmp_path, communities)
+        data = json.loads((tmp_path / ".obsidian" / "plugins" / "3d-graph" / "data.json").read_text())
+
+        community_groups = [g for g in data["colorGroups"] if g["query"].startswith("tag:community")]
+        assert len(community_groups) == 3
+
+    def test_branch_color_groups(self, tmp_path):
+        from ramets.obsidian.config import generate_3d_config
+
+        generate_3d_config(tmp_path, {0: []}, branches=["feat/auth", "main"])
+        data = json.loads((tmp_path / ".obsidian" / "plugins" / "3d-graph" / "data.json").read_text())
+
+        branch_groups = [g for g in data["colorGroups"] if g["query"].startswith("tag:branch")]
+        assert len(branch_groups) == 2
+
+    def test_decision_color_groups(self, tmp_path):
+        from ramets.obsidian.config import generate_3d_config
+
+        generate_3d_config(tmp_path, {0: []})
+        data = json.loads((tmp_path / ".obsidian" / "plugins" / "3d-graph" / "data.json").read_text())
+
+        decision_groups = [g for g in data["colorGroups"] if "decision" in g["query"]]
+        assert len(decision_groups) >= 1
+
+
+class TestBranchLayers:
+    def test_render_with_deltas(self, db, sample_graph, tmp_path):
+        from unittest.mock import patch
+
+        from ramets.obsidian.layers import render_branch_layers
+
+        db.store_genet(sample_graph, "abc123")
+
+        branch_graph = {
+            "nodes": sample_graph["nodes"]
+            + [{"id": "d", "label": "ModuleD", "file_type": "code", "community": 2}],
+            "links": sample_graph["links"] + [{"source": "a", "target": "d", "relation": "uses"}],
+        }
+
+        vault_dir = tmp_path / "vault"
+        vault_dir.mkdir()
+
+        with patch("ramets.obsidian.layers.materialize", return_value=branch_graph):
+            count = render_branch_layers(db, vault_dir, ["feat/new"], genet=sample_graph)
+
+        assert count > 0
+        branch_dir = vault_dir / "branch--feat--new"
+        assert branch_dir.exists()
+        assert (branch_dir / "_BRANCH_INFO.md").exists()
+
+    def test_render_no_deltas(self, db, sample_graph, tmp_path):
+        from unittest.mock import patch
+
+        from ramets.obsidian.layers import render_branch_layers
+
+        db.store_genet(sample_graph, "abc123")
+
+        vault_dir = tmp_path / "vault"
+        vault_dir.mkdir()
+
+        with patch("ramets.obsidian.layers.materialize", return_value=sample_graph):
+            count = render_branch_layers(db, vault_dir, ["main"], genet=sample_graph)
+
+        assert count == 0
+
+    def test_render_no_genet(self, db, tmp_path):
+        from ramets.obsidian.layers import render_branch_layers
+
+        vault_dir = tmp_path / "vault"
+        vault_dir.mkdir()
+
+        count = render_branch_layers(db, vault_dir, ["main"])
+        assert count == 0
