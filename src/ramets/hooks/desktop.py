@@ -17,7 +17,13 @@ from pathlib import Path
 def _desktop_config_path() -> Path:
     """Return the platform-specific path to claude_desktop_config.json."""
     if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+        return (
+            Path.home()
+            / "Library"
+            / "Application Support"
+            / "Claude"
+            / "claude_desktop_config.json"
+        )
     elif sys.platform == "win32":
         appdata = Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
         return Path(appdata) / "Claude" / "claude_desktop_config.json"

@@ -102,41 +102,24 @@ class TestShortestPath:
 
 class TestGetCommunity:
     def test_community_0(self, G):
-        members = [
-            nid for nid, data in G.nodes(data=True)
-            if data.get("community") == 0
-        ]
+        members = [nid for nid, data in G.nodes(data=True) if data.get("community") == 0]
         assert set(members) == {"a", "b"}
 
     def test_community_1(self, G):
-        members = [
-            nid for nid, data in G.nodes(data=True)
-            if data.get("community") == 1
-        ]
+        members = [nid for nid, data in G.nodes(data=True) if data.get("community") == 1]
         assert set(members) == {"c", "d"}
 
     def test_community_2(self, G):
-        members = [
-            nid for nid, data in G.nodes(data=True)
-            if data.get("community") == 2
-        ]
+        members = [nid for nid, data in G.nodes(data=True) if data.get("community") == 2]
         assert set(members) == {"e"}
 
     def test_nonexistent_community(self, G):
-        members = [
-            nid for nid, data in G.nodes(data=True)
-            if data.get("community") == 99
-        ]
+        members = [nid for nid, data in G.nodes(data=True) if data.get("community") == 99]
         assert members == []
 
     def test_internal_edges(self, G):
         """Count edges where both endpoints are in community 0."""
-        c0_members = {
-            nid for nid, data in G.nodes(data=True)
-            if data.get("community") == 0
-        }
-        internal = sum(
-            1 for u, v in G.edges() if u in c0_members and v in c0_members
-        )
+        c0_members = {nid for nid, data in G.nodes(data=True) if data.get("community") == 0}
+        internal = sum(1 for u, v in G.edges() if u in c0_members and v in c0_members)
         # a -> b is the only edge within community 0
         assert internal == 1

@@ -61,31 +61,39 @@ def _write_data(
     # Community color groups
     for i, cid in enumerate(sorted(communities.keys())[:20]):
         color = COMMUNITY_COLORS[i % len(COMMUNITY_COLORS)]
-        groups.append({
-            "query": f"tag:community/C{cid:02d}",
-            "color": color,
-        })
+        groups.append(
+            {
+                "query": f"tag:community/C{cid:02d}",
+                "color": color,
+            }
+        )
 
     # Branch-specific colors (gold-tinted for branch layers)
     branch_colors = ["#FFD700", "#FFA500", "#FF6347", "#00CED1", "#7B68EE"]
     for i, br in enumerate((branches or [])[:5]):
         sanitized = br.replace("/", "--").replace("\\", "--")
-        groups.append({
-            "query": f"tag:branch/{sanitized}",
-            "color": branch_colors[i % len(branch_colors)],
-        })
+        groups.append(
+            {
+                "query": f"tag:branch/{sanitized}",
+                "color": branch_colors[i % len(branch_colors)],
+            }
+        )
 
     # Decision notes in gold
-    groups.append({
-        "query": "tag:layer/decision",
-        "color": "#FFD700",
-    })
+    groups.append(
+        {
+            "query": "tag:layer/decision",
+            "color": "#FFD700",
+        }
+    )
 
     # Superseded decisions faded
-    groups.append({
-        "query": "tag:decision status:superseded",
-        "color": "#808080",
-    })
+    groups.append(
+        {
+            "query": "tag:decision status:superseded",
+            "color": "#808080",
+        }
+    )
 
     data = {
         "colorGroups": groups,

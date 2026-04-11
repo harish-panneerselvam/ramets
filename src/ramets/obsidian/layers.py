@@ -79,8 +79,14 @@ def _render_single_branch(
     removed_edges = [d for d in deltas if d["op"] == "rm_edge"]
 
     _write_branch_info(
-        branch_dir, branch, branch_dir_name,
-        added, removed, modified, added_edges, removed_edges,
+        branch_dir,
+        branch,
+        branch_dir_name,
+        added,
+        removed,
+        modified,
+        added_edges,
+        removed_edges,
         base_node_by_id,
     )
 
@@ -103,10 +109,15 @@ def _render_single_branch(
         if nid not in branch_nodes:
             continue
         _write_delta_note(
-            branch_dir, branch, branch_dir_name,
-            nid, branch_nodes[nid],
+            branch_dir,
+            branch,
+            branch_dir_name,
+            nid,
+            branch_nodes[nid],
             nid not in base_node_by_id,
-            outgoing, incoming, branch_nodes,
+            outgoing,
+            incoming,
+            branch_nodes,
         )
         note_count += 1
 
