@@ -93,6 +93,10 @@ def init(no_hooks: bool, no_claude_hooks: bool):
         install_claude_hooks(repo_root)
         click.echo("Installed Claude Code hooks in .claude/settings.json")
 
+    # Install Claude Code skill
+    if not no_claude_hooks:
+        _install_skill()
+
     # Add .ramets/ to .gitignore
     gitignore = repo_root / ".gitignore"
     if gitignore.exists():
@@ -446,6 +450,55 @@ def _print_decision_detail(d) -> None:
         click.echo(f"  Rationale: {d.rationale}")
     if d.context_files:
         click.echo(f"  Files: {', '.join(d.context_files)}")
+
+
+@main.command("install-skill")
+def install_skill_cmd():
+    """Install the ramets Claude Code skill to ~/.claude/skills/."""
+    _install_skill()
+
+
+def _install_skill() -> None:
+    """Install SKILL.md to ~/.claude/skills/ramets/ and register in CLAUDE.md."""
+    import shutil
+
+    home = Path.home()
+    skill_dir = home / ".claude" / "skills" / "ramets"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy SKILL.md from the package
+    pkg_skill = Path(__file__).parent / "skill" / "SKILL.md"
+    if pkg_skill.exists():
+        shutil.copy2(pkg_skill, skill_dir / "SKILL.md")
+    else:
+        click.echo("Warning: SKILL.md not found in package", err=True)
+        return
+
+    # Register in CLAUDE.md if not already there
+    claude_md = home / ".claude" / "CLAUDE.md"
+    registration = (
+        "\n# ramets\n"
+        "- **ramets** (`~/.claude/skills/ramets/SKILL.md`) - per-branch AI coding context "
+        "with delta-encoded knowledge graphs, decision tracking, and Obsidian visualization. "
+        "Trigger: `/ramets`\n"
+        "When the user types `/ramets`, invoke the Skill tool with "
+        '`skill: "ramets"` before doing anything else.\n'
+    )
+
+    if claude_md.exists():
+        content = claude_md.read_text()
+        if "skills/ramets" not in content:
+            with open(claude_md, "a") as f:
+                f.write(registration)
+            click.echo("Registered /ramets skill in ~/.claude/CLAUDE.md")
+        else:
+            click.echo("Skill already registered in ~/.claude/CLAUDE.md")
+    else:
+        claude_md.parent.mkdir(parents=True, exist_ok=True)
+        claude_md.write_text(registration)
+        click.echo("Created ~/.claude/CLAUDE.md with /ramets skill")
+
+    click.echo(f"Installed skill to {skill_dir / 'SKILL.md'}")
 
 
 @main.command()
