@@ -7,8 +7,6 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from ramets.hooks.desktop import (
     _desktop_config_path,
     install_desktop_config,

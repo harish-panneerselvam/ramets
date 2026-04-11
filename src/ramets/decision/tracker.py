@@ -145,6 +145,92 @@ class DecisionTracker:
         """Get all active decisions for a branch."""
         return self.query(branch=branch, status="active")
 
+    def has_similar_decision(self, branch: str, commit_sha: str, question: str) -> bool:
+        """Check if a similar decision already exists for this commit.
+
+        Uses commit SHA as anchor and keyword overlap (Jaccard > 0.5)
+        to detect duplicates across capture strategies.
+        """
+        if not commit_sha:
+            return False
+
+        rows = self.db.conn.execute(
+            "SELECT question FROM decisions WHERE branch = ? AND commit_sha = ?",
+            (branch, commit_sha),
+        ).fetchall()
+
+        if not rows:
+            return False
+
+        new_keywords = _extract_keywords(question)
+        if not new_keywords:
+            return False
+
+        for row in rows:
+            existing_keywords = _extract_keywords(row["question"])
+            if not existing_keywords:
+                continue
+            intersection = new_keywords & existing_keywords
+            union = new_keywords | existing_keywords
+            if len(intersection) / len(union) > 0.5:
+                return True
+
+        return False
+
+    def record_if_new(self, decision: Decision) -> str | None:
+        """Record a decision only if no similar one exists for the same commit.
+
+        Returns the decision ID if recorded, None if skipped as duplicate.
+        """
+        if self.has_similar_decision(decision.branch, decision.commit_sha or "", decision.question):
+            return None
+        return self.record(decision)
+
+
+_STOP_WORDS = {
+    "how",
+    "does",
+    "what",
+    "where",
+    "is",
+    "the",
+    "a",
+    "an",
+    "in",
+    "to",
+    "of",
+    "for",
+    "with",
+    "this",
+    "that",
+    "it",
+    "from",
+    "by",
+    "on",
+    "at",
+    "and",
+    "or",
+    "not",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "do",
+    "did",
+    "can",
+    "could",
+    "would",
+    "should",
+    "will",
+}
+
+
+def _extract_keywords(text: str) -> set[str]:
+    """Extract meaningful keywords from a question/description."""
+    words = text.lower().replace("?", "").replace("'", "").split()
+    return {w for w in words if w not in _STOP_WORDS and len(w) > 2}
+
 
 def _row_to_decision(row: dict) -> Decision:
     """Convert a SQLite row to a Decision model."""

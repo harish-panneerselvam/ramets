@@ -113,8 +113,6 @@ def run_server():
             branch: Branch name (default: current branch).
             direction: "in", "out", or "both" (default: "both").
         """
-        import networkx as nx
-
         from ramets.core.branch import get_db_path
         from ramets.core.db import GenetDB
         from ramets.core.materialize import materialize, to_networkx

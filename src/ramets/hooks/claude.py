@@ -28,6 +28,7 @@ def install_claude_hooks(repo_path: Path | None = None) -> None:
     _write_session_start(hooks_dir, repo_path)
     _write_prompt_enrich(hooks_dir)
     _write_gate_reads(hooks_dir)
+    _write_session_stop(hooks_dir, repo_path)
 
     # Update settings.json
     _update_settings_json(repo_path)
@@ -66,7 +67,16 @@ def _write_session_start(hooks_dir: Path, repo_path: Path) -> None:
         from pathlib import Path
         try:
             db = GenetDB(Path('$DB'))
-            print(summary(db))
+            s = summary(db)
+            # Check if claude-instruction strategy is enabled
+            try:
+                from ramets.decision.config import load_config
+                cfg = load_config(Path('$REPO_ROOT'))
+                if cfg.claude_instruction.enabled:
+                    s += '\\n\\n### Decision Recording\\nWhen you make a design choice between alternatives, record it with: ramets decide -q \"Question\" -o \"Option A\" -o \"Option B\" -c 0 -r \"Rationale\"'
+            except Exception:
+                pass
+            print(s)
             db.close()
         except Exception as e:
             print(f'ramets: error generating summary: {{e}}')
@@ -151,6 +161,50 @@ def _write_gate_reads(hooks_dir: Path) -> None:
     path.chmod(path.stat().st_mode | stat.S_IEXEC)
 
 
+def _write_session_stop(hooks_dir: Path, repo_path: Path) -> None:
+    """Write the Stop hook script for end-of-session decision capture."""
+    import sys
+
+    python = sys.executable
+
+    script = dedent(f"""\
+        #!/bin/bash
+        # ramets Stop hook — prompt decision recording at session end.
+
+        REPO_ROOT="${{CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}}"
+        if [ -f "$REPO_ROOT/.git" ]; then
+            REPO_ROOT="$(sed 's|gitdir: ||;s|/\\.git/worktrees/.*||' "$REPO_ROOT/.git")"
+        fi
+
+        DB="$REPO_ROOT/.ramets/store.db"
+        [ ! -f "$DB" ] && exit 0
+
+        # Check if session-end strategy is enabled
+        ENABLED=$("{python}" -c "
+        from ramets.decision.config import load_config
+        from pathlib import Path
+        try:
+            c = load_config(Path('$REPO_ROOT'))
+            print('1' if c.session_end.enabled else '0')
+        except Exception:
+            print('0')
+        " 2>/dev/null)
+        [ "$ENABLED" != "1" ] && exit 0
+
+        jq -n '{{
+            hookSpecificOutput: {{
+                hookEventName: "Stop",
+                additionalContext: "Before ending: Record any decisions you made during this session using `ramets decide -q \\"Question\\" -o \\"Option A\\" -o \\"Option B\\" -c 0 -r \\"Rationale\\"`. For each choice between alternatives, record the question, options considered, which you chose, and why. Skip trivial formatting choices."
+            }}
+        }}'
+        exit 0
+    """)
+
+    path = hooks_dir / "ramets-session-stop.sh"
+    path.write_text(script)
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+
+
 def _update_settings_json(repo_path: Path) -> None:
     """Merge ramets hooks into .claude/settings.json."""
     settings_path = repo_path / ".claude" / "settings.json"
@@ -209,6 +263,21 @@ def _update_settings_json(repo_path: Path) -> None:
             ],
         },
         match_key="matcher",
+    )
+
+    # Stop (session-end decision capture)
+    stop_hooks = hooks.setdefault("Stop", [])
+    _upsert_hook(
+        stop_hooks,
+        {
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": '"$CLAUDE_PROJECT_DIR/.claude/hooks/ramets-session-stop.sh"',
+                    "timeout": 5,
+                }
+            ],
+        },
     )
 
     settings_path.write_text(json.dumps(settings, indent=2) + "\n")

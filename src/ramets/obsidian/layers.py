@@ -217,7 +217,8 @@ def _write_delta_note(
     lines.append(f"tags: [{', '.join(tags)}]")
     lines.append("---")
     lines.append("")
-    lines.append(f"# {'\U0001f195 ' if is_new else '\u270f\ufe0f '}{label}")
+    icon = "\U0001f195 " if is_new else "\u270f\ufe0f "
+    lines.append(f"# {icon}{label}")
     lines.append("")
     lines.append(f"*{'Added' if is_new else 'Modified'} in `{branch}`*")
     lines.append("")

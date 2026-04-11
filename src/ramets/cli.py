@@ -121,6 +121,12 @@ def init(no_hooks: bool, no_claude_hooks: bool, install_desktop: bool):
 
     db.close()
 
+    # Write default config
+    from ramets.decision.config import save_default_config
+
+    save_default_config(repo_root)
+    click.echo("Created default config at .ramets/config.json")
+
     click.echo('\nReady! Try: ramets query "how does the main module work?"')
     click.echo(f"Storage: {db_path.stat().st_size / 1024:.0f} KB")
 
@@ -583,6 +589,89 @@ def gc():
     click.echo("Database compacted")
 
     db.close()
+
+
+@main.group("config")
+def config_group():
+    """View or modify ramets configuration.
+
+    Examples:
+        ramets config show
+        ramets config set auto_decisions.commit_mining.enabled false
+        ramets config set auto_decisions.session_end.enabled true
+    """
+    pass
+
+
+@config_group.command("show")
+def config_show():
+    """Display current ramets configuration."""
+    import json as _json
+
+    from ramets.decision.config import load_config
+
+    repo_root = get_main_repo_root()
+    cfg = load_config(repo_root)
+    click.echo(_json.dumps({"auto_decisions": cfg.model_dump()}, indent=2))
+
+
+@config_group.command("set")
+@click.argument("key")
+@click.argument("value")
+def config_set(key: str, value: str):
+    """Set a config value using dot-notation.
+
+    Examples:
+        ramets config set auto_decisions.strategy session-end
+        ramets config set auto_decisions.commit_mining.enabled false
+        ramets config set auto_decisions.commit_mining.min_confidence 0.3
+    """
+    from ramets.decision.config import load_config, save_config
+
+    repo_root = get_main_repo_root()
+    cfg = load_config(repo_root)
+
+    # Parse dot-notation key (strip auto_decisions prefix if present)
+    parts = key.split(".")
+    if parts[0] == "auto_decisions":
+        parts = parts[1:]
+
+    if not parts:
+        click.echo("Error: empty key after stripping auto_decisions prefix", err=True)
+        sys.exit(1)
+
+    # Convert value to appropriate type
+    parsed_value: object
+    if value.lower() in ("true", "false"):
+        parsed_value = value.lower() == "true"
+    else:
+        try:
+            parsed_value = float(value)
+            if parsed_value == int(parsed_value):
+                parsed_value = int(parsed_value)
+        except ValueError:
+            parsed_value = value
+
+    # Navigate to the right field
+    obj = cfg.model_dump()
+    target = obj
+    for part in parts[:-1]:
+        if part not in target:
+            click.echo(f"Error: unknown config key '{key}'", err=True)
+            sys.exit(1)
+        target = target[part]
+
+    if parts[-1] not in target:
+        click.echo(f"Error: unknown config key '{key}'", err=True)
+        sys.exit(1)
+
+    target[parts[-1]] = parsed_value
+
+    from ramets.decision.config import AutoDecisionConfig
+
+    updated = AutoDecisionConfig.model_validate(obj)
+    save_config(repo_root, updated)
+    click.echo(f"Set {key} = {parsed_value}")
 
 
 @main.command()
