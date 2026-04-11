@@ -10,4 +10,4 @@ a single aspen clone where individual trunks (ramets) share one root system (gen
 - Decisions: structured tracking of AI suggestions and user choices
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

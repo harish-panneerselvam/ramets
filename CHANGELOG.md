@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.2.0 (2026-04-11)
+
+### Features
+
+- Add Obsidian branch delta layers and decision notes
+  ([#4](https://github.com/panne027/ramets/pull/4),
+  [`446e952`](https://github.com/panne027/ramets/commit/446e95225bf1536a72cd31d2c2c6f8fe4d74b4bb))
+
+Branch layers show per-branch changes (added/removed/modified nodes) as a separate folder in the
+  vault with delta-tagged notes. Decision notes render structured decisions with options, rationale,
+  and chosen marker as Obsidian markdown.
+
+Vault now generates: base layer + branch delta layers + decision notes. Adds 12 new tests for vault
+  generation (70 total).
+
+Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>
+
+
 ## v0.1.0 (2026-04-11)
 
 ### Bug Fixes

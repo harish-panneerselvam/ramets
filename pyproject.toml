@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ramets"
-version = "0.1.0"
+version = "0.2.0"
 description = "Per-branch AI coding context — delta-encoded knowledge graphs, decision tracking, and Obsidian visualization. Your codebase is one organism. Each branch is a ramet."
 readme = "README.md"
 license = {text = "MIT"}
