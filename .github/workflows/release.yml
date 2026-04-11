@@ -19,7 +19,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          # GH_TOKEN (PAT) preferred so version bump commits trigger CI.
+          # Falls back to GITHUB_TOKEN if GH_TOKEN secret not configured yet.
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -36,7 +38,7 @@ jobs:
         id: semrel
         uses: python-semantic-release/python-semantic-release@v9
         with:
-          github_token: ${{ secrets.GH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build package
         if: steps.semrel.outputs.released == 'true'
@@ -56,5 +58,5 @@ jobs:
         if: steps.semrel.outputs.released == 'true'
         uses: python-semantic-release/publish-action@v9
         with:
-          github_token: ${{ secrets.GH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.semrel.outputs.tag }}
