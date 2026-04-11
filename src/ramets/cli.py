@@ -268,6 +268,187 @@ def obsidian(open_obsidian: bool, vault_dir: str | None, all_branches: bool):
 
 
 @main.command()
+@click.option("--question", "-q", required=True, help="The decision question")
+@click.option(
+    "--options",
+    "-o",
+    multiple=True,
+    required=True,
+    help="Options (repeat for each). Format: 'label' or 'label:description'",
+)
+@click.option("--chosen", "-c", type=int, required=True, help="Index of chosen option (0-based)")
+@click.option(
+    "--category",
+    type=click.Choice(
+        [
+            "architecture",
+            "implementation",
+            "dependency",
+            "naming",
+            "algorithm",
+            "refactor",
+            "config",
+            "test_strategy",
+            "api_design",
+            "data_model",
+            "performance",
+            "security",
+        ]
+    ),
+    default="implementation",
+    help="Decision category",
+)
+@click.option("--rationale", "-r", default="", help="Why this option was chosen")
+@click.option("--confidence", type=float, default=0.8, help="Confidence level (0.0-1.0)")
+@click.option("--file", "context_files", multiple=True, help="Related files")
+def decide(
+    question: str,
+    options: tuple[str, ...],
+    chosen: int,
+    category: str,
+    rationale: str,
+    confidence: float,
+    context_files: tuple[str, ...],
+):
+    """Record a design/implementation decision.
+
+    Examples:
+        ramets decide -q "Auth strategy?" -o "JWT" -o "Session cookies" -c 0 -r "Stateless"
+        ramets decide -q "ORM choice?" -o "SQLAlchemy:Full ORM" -o "Raw SQL" -c 1 --category dependency
+    """
+    db = _get_db()
+
+    from ramets.core.branch import current_commit
+    from ramets.decision.schema import Decision, Option
+    from ramets.decision.tracker import DecisionTracker
+
+    if chosen < 0 or chosen >= len(options):
+        click.echo(f"Error: --chosen must be 0-{len(options) - 1}", err=True)
+        sys.exit(1)
+
+    parsed_options = []
+    for opt_str in options:
+        if ":" in opt_str:
+            label, desc = opt_str.split(":", 1)
+            parsed_options.append(Option(label=label.strip(), description=desc.strip()))
+        else:
+            parsed_options.append(Option(label=opt_str.strip()))
+
+    branch = current_branch()
+    commit = current_commit()
+
+    decision = Decision(
+        branch=branch,
+        category=category,
+        question=question,
+        options=parsed_options,
+        chosen=chosen,
+        rationale=rationale,
+        confidence=confidence,
+        context_files=list(context_files),
+        commit_sha=commit,
+    )
+
+    tracker = DecisionTracker(db)
+    did = tracker.record(decision)
+    chosen_label = parsed_options[chosen].label
+
+    click.echo(f"Decision recorded: {did}")
+    click.echo(f"  Q: {question}")
+    click.echo(f"  Chose: {chosen_label}")
+    if rationale:
+        click.echo(f"  Why: {rationale}")
+
+    db.close()
+
+
+@main.command()
+@click.option("--branch", "-b", default=None, help="Filter by branch")
+@click.option("--category", default=None, help="Filter by category")
+@click.option("--status", default="active", help="Filter by status")
+@click.option("--search", "-s", default=None, help="Full-text search")
+@click.option("--id", "decision_id", default=None, help="Show specific decision by ID")
+def decisions(
+    branch: str | None,
+    category: str | None,
+    status: str,
+    search: str | None,
+    decision_id: str | None,
+):
+    """List or search decisions for the current branch.
+
+    Examples:
+        ramets decisions                     # All active decisions
+        ramets decisions -s "auth"           # Search for auth-related
+        ramets decisions --id abc123         # Show specific decision
+        ramets decisions --category architecture
+    """
+    db = _get_db()
+
+    from ramets.decision.tracker import DecisionTracker
+
+    tracker = DecisionTracker(db)
+
+    if decision_id:
+        d = tracker.get(decision_id)
+        if d is None:
+            click.echo(f"Decision not found: {decision_id}", err=True)
+            sys.exit(1)
+        _print_decision_detail(d)
+        db.close()
+        return
+
+    if search:
+        results = tracker.search(search)
+    else:
+        if branch is None:
+            branch = current_branch()
+        results = tracker.query(branch=branch, category=category, status=status)
+
+    if not results:
+        click.echo("No decisions found.")
+    else:
+        click.echo(f"Decisions: {len(results)}")
+        for d in results:
+            chosen_label = d.options[d.chosen].label if d.options else "?"
+            status_icon = {"active": "●", "superseded": "○", "reversed": "✗", "deferred": "◌"}.get(
+                d.status.value, "?"
+            )
+            click.echo(f"  {status_icon} [{d.id}] {d.question}")
+            click.echo(f"    → {chosen_label} ({d.category.value}, {d.confidence or '?'})")
+
+    db.close()
+
+
+def _print_decision_detail(d) -> None:
+    """Print full decision details."""
+    click.echo(f"Decision: {d.id}")
+    click.echo(f"  Question: {d.question}")
+    click.echo(f"  Category: {d.category.value}")
+    click.echo(f"  Branch: {d.branch}")
+    click.echo(f"  Status: {d.status.value}")
+    click.echo(f"  Timestamp: {d.timestamp}")
+    click.echo(f"  Confidence: {d.confidence}")
+    if d.commit_sha:
+        click.echo(f"  Commit: {d.commit_sha}")
+    click.echo("  Options:")
+    for i, opt in enumerate(d.options):
+        marker = " ✓" if i == d.chosen else "  "
+        desc = f" — {opt.description}" if opt.description else ""
+        click.echo(f"   {marker} [{i}] {opt.label}{desc}")
+        if opt.pros:
+            for pro in opt.pros:
+                click.echo(f"         + {pro}")
+        if opt.cons:
+            for con in opt.cons:
+                click.echo(f"         - {con}")
+    if d.rationale:
+        click.echo(f"  Rationale: {d.rationale}")
+    if d.context_files:
+        click.echo(f"  Files: {', '.join(d.context_files)}")
+
+
+@main.command()
 def gc():
     """Prune dead ramets, compact the genet database."""
     db = _get_db()
