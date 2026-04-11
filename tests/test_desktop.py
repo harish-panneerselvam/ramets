@@ -31,8 +31,9 @@ class TestDesktopConfigPath:
             assert p.name == "claude_desktop_config.json"
 
     def test_windows(self):
-        with patch.object(sys, "platform", "win32"), patch.dict(
-            "os.environ", {"APPDATA": "/fake/appdata"}
+        with (
+            patch.object(sys, "platform", "win32"),
+            patch.dict("os.environ", {"APPDATA": "/fake/appdata"}),
         ):
             p = _desktop_config_path()
             assert "fake" in str(p) or "APPDATA" in str(p) or "Claude" in str(p)
@@ -57,11 +58,15 @@ class TestInstallDesktopConfig:
 
     def test_preserves_existing_servers(self, tmp_path: Path):
         config_path = tmp_path / "claude_desktop_config.json"
-        config_path.write_text(json.dumps({
-            "mcpServers": {
-                "other-tool": {"command": "other", "args": ["run"]},
-            }
-        }))
+        config_path.write_text(
+            json.dumps(
+                {
+                    "mcpServers": {
+                        "other-tool": {"command": "other", "args": ["run"]},
+                    }
+                }
+            )
+        )
         repo = tmp_path / "myrepo"
         repo.mkdir()
 
@@ -98,12 +103,16 @@ class TestInstallDesktopConfig:
 class TestUninstallDesktopConfig:
     def test_removes_ramets_only(self, tmp_path: Path):
         config_path = tmp_path / "claude_desktop_config.json"
-        config_path.write_text(json.dumps({
-            "mcpServers": {
-                "ramets": {"command": "ramets", "args": ["serve"]},
-                "other": {"command": "other", "args": []},
-            }
-        }))
+        config_path.write_text(
+            json.dumps(
+                {
+                    "mcpServers": {
+                        "ramets": {"command": "ramets", "args": ["serve"]},
+                        "other": {"command": "other", "args": []},
+                    }
+                }
+            )
+        )
 
         with patch("ramets.hooks.desktop._desktop_config_path", return_value=config_path):
             result = uninstall_desktop_config()

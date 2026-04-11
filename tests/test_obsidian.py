@@ -232,7 +232,9 @@ class Test3DConfig:
         from ramets.obsidian.config import generate_3d_config
 
         generate_3d_config(tmp_path, {0: []})
-        manifest = json.loads((tmp_path / ".obsidian" / "plugins" / "3d-graph" / "manifest.json").read_text())
+        manifest = json.loads(
+            (tmp_path / ".obsidian" / "plugins" / "3d-graph" / "manifest.json").read_text()
+        )
         assert manifest["id"] == "3d-graph"
         assert manifest["name"] == "3D Graph"
 
@@ -241,16 +243,22 @@ class Test3DConfig:
 
         communities = {0: [], 1: [], 2: []}
         generate_3d_config(tmp_path, communities)
-        data = json.loads((tmp_path / ".obsidian" / "plugins" / "3d-graph" / "data.json").read_text())
+        data = json.loads(
+            (tmp_path / ".obsidian" / "plugins" / "3d-graph" / "data.json").read_text()
+        )
 
-        community_groups = [g for g in data["colorGroups"] if g["query"].startswith("tag:community")]
+        community_groups = [
+            g for g in data["colorGroups"] if g["query"].startswith("tag:community")
+        ]
         assert len(community_groups) == 3
 
     def test_branch_color_groups(self, tmp_path):
         from ramets.obsidian.config import generate_3d_config
 
         generate_3d_config(tmp_path, {0: []}, branches=["feat/auth", "main"])
-        data = json.loads((tmp_path / ".obsidian" / "plugins" / "3d-graph" / "data.json").read_text())
+        data = json.loads(
+            (tmp_path / ".obsidian" / "plugins" / "3d-graph" / "data.json").read_text()
+        )
 
         branch_groups = [g for g in data["colorGroups"] if g["query"].startswith("tag:branch")]
         assert len(branch_groups) == 2
@@ -259,7 +267,9 @@ class Test3DConfig:
         from ramets.obsidian.config import generate_3d_config
 
         generate_3d_config(tmp_path, {0: []})
-        data = json.loads((tmp_path / ".obsidian" / "plugins" / "3d-graph" / "data.json").read_text())
+        data = json.loads(
+            (tmp_path / ".obsidian" / "plugins" / "3d-graph" / "data.json").read_text()
+        )
 
         decision_groups = [g for g in data["colorGroups"] if "decision" in g["query"]]
         assert len(decision_groups) >= 1

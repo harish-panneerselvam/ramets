@@ -139,7 +139,9 @@ def run_server():
         if direction in ("in", "both"):
             preds = []
             for s, _, d in G.in_edges(target, data=True):
-                preds.append(f"  {G.nodes[s].get('label', s)} --{d.get('relation', '?')}--> {target_label}")
+                preds.append(
+                    f"  {G.nodes[s].get('label', s)} --{d.get('relation', '?')}--> {target_label}"
+                )
             if preds:
                 lines.append(f"\nIncoming ({len(preds)}):")
                 lines.extend(preds[:20])
@@ -147,7 +149,9 @@ def run_server():
         if direction in ("out", "both"):
             succs = []
             for _, t, d in G.out_edges(target, data=True):
-                succs.append(f"  {target_label} --{d.get('relation', '?')}--> {G.nodes[t].get('label', t)}")
+                succs.append(
+                    f"  {target_label} --{d.get('relation', '?')}--> {G.nodes[t].get('label', t)}"
+                )
             if succs:
                 lines.append(f"\nOutgoing ({len(succs)}):")
                 lines.extend(succs[:20])
@@ -227,9 +231,7 @@ def run_server():
         db.close()
 
         members = [
-            (nid, data)
-            for nid, data in G.nodes(data=True)
-            if data.get("community") == community_id
+            (nid, data) for nid, data in G.nodes(data=True) if data.get("community") == community_id
         ]
 
         if not members:
@@ -237,9 +239,7 @@ def run_server():
 
         # Count internal edges
         member_ids = {nid for nid, _ in members}
-        internal_edges = sum(
-            1 for u, v in G.edges() if u in member_ids and v in member_ids
-        )
+        internal_edges = sum(1 for u, v in G.edges() if u in member_ids and v in member_ids)
 
         lines = [f"Community {community_id}: {len(members)} nodes, {internal_edges} internal edges"]
         for nid, data in sorted(members, key=lambda x: x[1].get("label", "")):
