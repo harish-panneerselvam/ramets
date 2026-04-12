@@ -10,21 +10,24 @@ Named after [Pando](https://en.wikipedia.org/wiki/Pando_(tree)) (*Populus tremul
 
 ## The Problem
 
-AI coding assistants spend most of their tokens re-reading your codebase. Every new session, every branch switch, every architecture question — they start from scratch.
+AI coding assistants re-read your codebase every session. They lose decisions made in prior sessions to compaction. They have no awareness of branch topology or worktree context.
 
-| Without ramets | With ramets | Savings |
+Tools like [graphify](https://pypi.org/project/graphifyy/), [claude-mem](https://github.com/thedotmack/claude-mem), and [memsearch](https://github.com/zilliztech/memsearch) help with knowledge graphs and persistent memory. ramets builds on top of graphify's AST extraction, adding per-branch delta encoding, structured decision tracking, and automatic context injection via git hooks.
+
+### Benchmarks
+
+Tested with Opus on FastAPI (5,376 nodes), comparing sessions with and without ramets:
+
+| Task | Token Savings | Turns (without → with) |
 |---|---|---|
-| Read knowledge graph: **212K tokens** | Session summary injection: ~400 tokens | **99.8%** |
-| Re-read files on branch switch: ~50K | Delta summary: ~200 tokens | **99.6%** |
-| "What did we decide?" — grep history: ~10K | `ramets decisions`: ~300 tokens | **97%** |
-| New session, re-explore codebase: ~30K | SessionStart hook: ~500 tokens | **98%** |
-
-LLM providers aren't incentivized to fix this — more tokens means more revenue. So we fix it ourselves.
+| Architecture questions | **42%** | 10 → 2 |
+| Code modification planning | **68%** | — |
+| Session orientation | **57%** | 4.7 → 2.7 |
 
 !!! quote "Andrej Karpathy on LLM Knowledge Bases"
     *"A large fraction of my recent token throughput is going less into manipulating code, and more into manipulating knowledge."*
 
-    Karpathy's [LLM Knowledge Base](https://x.com/karpathy/status/2039805659525644595) approach uses LLMs to build persistent markdown knowledge bases, bypassing RAG entirely. **ramets takes this further**: instead of the LLM building knowledge files manually, ramets pre-computes a structured knowledge graph from AST extraction and injects it automatically via git hooks — zero tokens for computation, ~400 tokens for consumption.
+    Karpathy's [LLM Knowledge Base](https://x.com/karpathy/status/2039805659525644595) approach uses LLMs to build persistent markdown knowledge bases, bypassing RAG entirely. ramets takes this further: instead of the LLM building knowledge files manually, ramets pre-computes a structured knowledge graph from AST extraction and injects it automatically via git hooks — zero tokens for computation, ~400 tokens for consumption.
 
 ## How It Works
 
