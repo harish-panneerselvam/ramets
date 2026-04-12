@@ -4,6 +4,7 @@ site_description: Per-branch AI coding context — delta-encoded knowledge graph
 repo_url: https://github.com/harish-panneerselvam/ramets
 repo_name: harish-panneerselvam/ramets
 
+
 theme:
   name: material
   palette:
