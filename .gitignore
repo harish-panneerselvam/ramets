@@ -32,3 +32,6 @@ Thumbs.db
 # graphify output (side effect of AST extraction)
 graphify-out/
 .graphify_*
+
+# MkDocs build output
+site/
