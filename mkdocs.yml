@@ -1,0 +1,61 @@
+site_name: ramets
+site_url: https://panne027.github.io/ramets/
+site_description: Per-branch AI coding context — delta-encoded knowledge graphs, decision tracking, and Obsidian visualization
+repo_url: https://github.com/panne027/ramets
+repo_name: panne027/ramets
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: green
+      accent: light green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: green
+      accent: light green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.highlight
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - How It Works: getting-started/how-it-works.md
+  - Core Concepts:
+    - The Genet-Ramet Model: concepts/genet-ramet.md
+    - Delta Encoding: concepts/delta-encoding.md
+    - Token Budgets: concepts/token-budgets.md
+  - Integrations:
+    - Claude Code: integrations/claude-code.md
+    - MCP Server: integrations/mcp-server.md
+    - Obsidian: integrations/obsidian.md
+  - CLI Reference: cli-reference.md
+  - Decision Tracking: decisions.md
+  - Benchmarks: benchmarks.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
