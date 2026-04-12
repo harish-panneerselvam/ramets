@@ -4,26 +4,29 @@
 
 *Your codebase is one organism. Each branch is a ramet.*
 
-[![CI](https://github.com/panne027/ramets/actions/workflows/ci.yml/badge.svg)](https://github.com/panne027/ramets/actions/workflows/ci.yml)
+[![CI](https://github.com/harish-panneerselvam/ramets/actions/workflows/ci.yml/badge.svg)](https://github.com/harish-panneerselvam/ramets/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/ramets)](https://pypi.org/project/ramets/)
 [![Python](https://img.shields.io/pypi/pyversions/ramets)](https://pypi.org/project/ramets/)
 
-Named after [Pando](https://en.wikipedia.org/wiki/Pando_(tree)) (*Populus tremuloides*), the world's largest organism — a single aspen clone where individual trunks (ramets) share one root system (genet).
+Named after [Pando](https://en.wikipedia.org/wiki/Pando_(tree)) (*Populus tremuloides*), the world's largest organism — a single aspen clone where 47,000 individual trunks (ramets) share one root system (genet).
 
 ---
 
 ## The Problem
 
-AI coding assistants (Claude Code, Cursor, Codex) waste enormous tokens re-reading your codebase every session:
+AI coding assistants re-read your codebase every session. They lose decisions made in prior sessions to compaction. They have no awareness of branch topology or worktree context.
 
-| Without ramets | With ramets | Savings |
+ramets builds on [graphify](https://pypi.org/project/graphifyy/)'s AST extraction to add per-branch delta encoding, structured decision tracking, and automatic context injection via git hooks. All computation is local — the LLM only consumes pre-computed results.
+
+### Benchmarks
+
+Tested with Opus on FastAPI (5,376 nodes), comparing sessions with and without ramets:
+
+| Task | Token Savings | Turns (without → with) |
 |---|---|---|
-| Read knowledge graph: **212K tokens** | Session summary injection: ~400 tokens | **99.8%** |
-| Re-read files on branch switch: ~50K | Delta summary: ~200 tokens | **99.6%** |
-| "What did we decide?" — grep history: ~10K | `ramets decisions`: ~300 tokens | **97%** |
-| New session, re-explore codebase: ~30K | SessionStart hook: ~500 tokens | **98%** |
-
-LLM providers aren't incentivized to fix this — more tokens means more subscription revenue. So we fix it ourselves.
+| Architecture questions | **42%** | 10 → 2 |
+| Code modification planning | **68%** | — |
+| Session orientation | **57%** | 4.7 → 2.7 |
 
 ## Quick Start
 
@@ -41,17 +44,17 @@ ramets obsidian      # Generate Obsidian vault for visualization
 ## How It Works
 
 ```
-Genet (shared root)    ──>  base knowledge graph from common ancestor
-  ├── Ramet: main      ──>  0 deltas (is the base)
-  ├── Ramet: feat/auth  ──>  12 deltas (added auth module)
-  ├── Ramet: fix/typo   ──>  2 deltas (renamed function)
-  └── Ramet: feat/api   ──>  28 deltas (new API layer)
+Genet (shared root)    -->  base knowledge graph from common ancestor
+  |-- Ramet: main      -->  0 deltas (is the base)
+  |-- Ramet: feat/auth  -->  12 deltas (added auth module)
+  |-- Ramet: fix/typo   -->  2 deltas (renamed function)
+  +-- Ramet: feat/api   -->  28 deltas (new API layer)
 
 Total storage: ~100KB for 400 nodes (ramets codebase itself)
 ```
 
 1. **`ramets init`** builds the genet from tree-sitter AST extraction (via [graphify](https://pypi.org/project/graphifyy/))
-2. **Git hooks** fire on every commit/checkout — zero LLM tokens, all local computation
+2. **Git hooks** fire on every commit/checkout -- zero LLM tokens, all local computation
 3. **Claude Code hooks** inject pre-computed summaries at session start (~400 tokens)
 4. **`ramets query`** does keyword + BFS traversal with configurable token budgets
 
@@ -59,9 +62,35 @@ Total storage: ~100KB for 400 nodes (ramets codebase itself)
 
 ## Features
 
+### Decision Tracking
+
+Decisions are stored as first-class objects: question, options, rationale, confidence. They survive compaction, span worktrees, and get mined from conventional commits automatically.
+
+```bash
+ramets decide \
+  -q "Which optimizer for calibration?" \
+  -o "Bayesian:TPE sampler, handles high-dimensional spaces" \
+  -o "Grid search:Exhaustive but slow" \
+  -c 0 \
+  -r "11 continuous parameters, TPE converges faster" \
+  --category architecture \
+  --confidence 0.85
+
+ramets decisions                        # List active decisions
+ramets decisions -s "optimizer"         # Full-text search
+```
+
+Auto-capture from conventional commits:
+
+```bash
+git commit -m "feat: chose Bayesian optimization over grid search"
+# Automatically mined into a queryable decision record
+```
+
 ### Delta-Encoded Knowledge Graphs
+
 - **Genet**: shared base graph (zlib-compressed, ~80KB)
-- **Ramets**: per-branch deltas — only what changed (add/remove/modify nodes and edges)
+- **Ramets**: per-branch deltas -- only what changed (add/remove/modify nodes and edges)
 - Concurrent worktree access via SQLite WAL mode
 - Storage: **104KB** for 408 nodes, 837 edges (real measurement on ramets codebase)
 
@@ -74,32 +103,13 @@ Total storage: ~100KB for 400 nodes (ramets codebase itself)
 | post-merge | After pull/merge | Recompute deltas |
 | post-rewrite | After rebase | Rebuild deltas for rewritten commits |
 
-### Claude Code Hooks (Token Savings)
+### Claude Code Hooks
 
-| Hook | Trigger | Tokens saved |
+| Hook | Trigger | What it does |
 |---|---|---|
-| SessionStart | Session begins | ~212K (injects 400-token summary instead) |
-| UserPromptSubmit | User sends prompt | ~30-50K (redirects to graph query) |
-| PreToolUse | File read attempted | ~10-50K (gates expensive reads) |
-
-### Decision Tracking
-
-Structured records of "AI suggested X, user chose Y" — not natural language summaries.
-
-```bash
-ramets decide \
-  -q "Which auth strategy?" \
-  -o "JWT:Stateless tokens" \
-  -o "Session cookies:Server-side sessions" \
-  -c 0 \
-  -r "Stateless fits our microservices design" \
-  --category architecture \
-  --confidence 0.85
-
-ramets decisions                        # List active decisions
-ramets decisions -s "auth"              # Full-text search
-ramets decisions --id abc123            # View decision detail
-```
+| SessionStart | Session begins | Injects ~400-token summary with graph structure and recent decisions |
+| UserPromptSubmit | User sends prompt | Nudges toward graph queries before file exploration |
+| PreToolUse | File read attempted | Gates expensive reads when graph queries would suffice |
 
 ### Obsidian Visualization
 
@@ -129,13 +139,13 @@ Tools: `query_graph`, `get_node`, `diff_branches`, `session_summary`, `record_de
 
 ```
 .ramets/store.db (SQLite, WAL mode)
-├── genet         — shared root graph (compressed blob)
-├── ramets        — materialized per-branch snapshots
-├── ramet_deltas  — delta log per branch
-├── decisions     — structured decision records
-├── decision_edges — decision relationship graph
-├── sessions      — AI session tracking
-└── branches      — branch registry
+|-- genet         -- shared root graph (compressed blob)
+|-- ramets        -- materialized per-branch snapshots
+|-- ramet_deltas  -- delta log per branch
+|-- decisions     -- structured decision records
+|-- decision_edges -- decision relationship graph
+|-- sessions      -- AI session tracking
++-- branches      -- branch registry
 ```
 
 ## CLI Reference
@@ -150,6 +160,8 @@ ramets diff feat/a main  Graph diff between branches
 ramets summary           Compact summary for session injection (~400 tokens)
 ramets decide            Record a structured decision
 ramets decisions         List/search decisions for current branch
+ramets config show       Display current configuration
+ramets config set K V    Update config with dot-notation keys
 ramets obsidian          Generate Obsidian vault with branch layers
 ramets obsidian --open   Generate and open in Obsidian
 ramets serve             Start MCP server (stdio)
@@ -159,10 +171,10 @@ ramets gc                Prune dead ramets, compact DB
 ## Development
 
 ```bash
-git clone https://github.com/panne027/ramets.git
+git clone https://github.com/harish-panneerselvam/ramets.git
 cd ramets
 pip install -e ".[dev]"
-pytest tests/ -v                         # 70 tests
+pytest tests/ -v                         # 70+ tests
 ruff check src/ tests/                   # Lint
 ruff format src/ tests/                  # Format
 ```
@@ -172,6 +184,10 @@ ruff format src/ tests/                  # Format
 - Python >= 3.10
 - Git repository
 - [graphify](https://pypi.org/project/graphifyy/) (installed as dependency)
+
+## Documentation
+
+Full docs at [harish-panneerselvam.github.io/ramets](https://harish-panneerselvam.github.io/ramets/)
 
 ## License
 

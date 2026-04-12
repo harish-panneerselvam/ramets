@@ -1,8 +1,9 @@
 site_name: ramets
-site_url: https://panne027.github.io/ramets/
+site_url: https://harish-panneerselvam.github.io/ramets/
 site_description: Per-branch AI coding context — delta-encoded knowledge graphs, decision tracking, and Obsidian visualization
-repo_url: https://github.com/panne027/ramets
-repo_name: panne027/ramets
+repo_url: https://github.com/harish-panneerselvam/ramets
+repo_name: harish-panneerselvam/ramets
+
 
 theme:
   name: material
