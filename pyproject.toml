@@ -43,9 +43,9 @@ dev = ["pytest>=7.0", "pytest-asyncio", "ruff", "mypy"]
 ramets = "ramets.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/panne027/ramets"
-Repository = "https://github.com/panne027/ramets"
-Issues = "https://github.com/panne027/ramets/issues"
+Homepage = "https://github.com/harish-panneerselvam/ramets"
+Repository = "https://github.com/harish-panneerselvam/ramets"
+Issues = "https://github.com/harish-panneerselvam/ramets/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

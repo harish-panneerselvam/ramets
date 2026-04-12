@@ -4,7 +4,7 @@
 
 *Your codebase is one organism. Each branch is a ramet.*
 
-[![CI](https://github.com/panne027/ramets/actions/workflows/ci.yml/badge.svg)](https://github.com/panne027/ramets/actions/workflows/ci.yml)
+[![CI](https://github.com/harish-panneerselvam/ramets/actions/workflows/ci.yml/badge.svg)](https://github.com/harish-panneerselvam/ramets/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/ramets)](https://pypi.org/project/ramets/)
 [![Python](https://img.shields.io/pypi/pyversions/ramets)](https://pypi.org/project/ramets/)
 
@@ -171,7 +171,7 @@ ramets gc                Prune dead ramets, compact DB
 ## Development
 
 ```bash
-git clone https://github.com/panne027/ramets.git
+git clone https://github.com/harish-panneerselvam/ramets.git
 cd ramets
 pip install -e ".[dev]"
 pytest tests/ -v                         # 70+ tests
@@ -187,7 +187,7 @@ ruff format src/ tests/                  # Format
 
 ## Documentation
 
-Full docs at [panne027.github.io/ramets](https://panne027.github.io/ramets/)
+Full docs at [harish-panneerselvam.github.io/ramets](https://harish-panneerselvam.github.io/ramets/)
 
 ## License
 
